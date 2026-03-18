@@ -28,7 +28,34 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        $user = Auth::user();
+
+        // safety check (hindari error null)
+        if (!$user || !$user->role_id) {
+            return redirect('/login')->withErrors([
+                'email' => 'Role user tidak ditemukan.',
+            ]);
+        }
+
+        switch ($user->role_id) {
+            case 1:
+                return redirect()->route('superadmin.dashboard');
+
+            case 2:
+                return redirect()->route('admin.dashboard');
+
+            case 3:
+                return redirect()->route('driver.dashboard');
+
+            case 4:
+                return redirect()->route('booking');
+
+            default:
+                Auth::logout();
+                return redirect('/login')->withErrors([
+                    'email' => 'Role tidak dikenali.',
+                ]);
+        }
     }
 
     /**
