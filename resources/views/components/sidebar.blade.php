@@ -14,6 +14,18 @@
         </li>
 
         <li class="nav-item">
+            <a href="{{ route('cities.index') }}" class="nav-link text-white">Cities</a>
+        </li>
+
+        <li class="nav-item">
+            <a href="{{ route('meeting_points.index') }}" class="nav-link text-white">Meeting Points</a>
+        </li>
+
+        <li class="nav-item">
+            <a href="{{ route('schedules.index') }}" class="nav-link text-white">Schedules</a>
+        </li>
+        
+        <li class="nav-item">
             <a href="#" class="nav-link text-white">Drivers</a>
         </li>
 

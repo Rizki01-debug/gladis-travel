@@ -4,6 +4,9 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\VehicleController;
+use App\Http\Controllers\CityController;
+use App\Http\Controllers\MeetingPointController;
+use App\Http\Controllers\DepartureScheduleController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -42,6 +45,29 @@ Route::middleware('auth')->group(function () {
     Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
     Route::get('/vehicles/create', [VehicleController::class, 'create'])->name('vehicles.create');
     Route::post('/vehicles', [VehicleController::class, 'store'])->name('vehicles.store');
+
+});
+
+
+Route::middleware('auth')->group(function () {
+
+    // Cities
+    Route::get('/cities', [CityController::class, 'index'])->name('cities.index');
+    Route::get('/cities/create', [CityController::class, 'create'])->name('cities.create');
+    Route::post('/cities', [CityController::class, 'store'])->name('cities.store');
+
+    // Meeting Points
+    Route::get('/meeting-points', [MeetingPointController::class, 'index'])->name('meeting_points.index');
+    Route::get('/meeting-points/create', [MeetingPointController::class, 'create'])->name('meeting_points.create');
+    Route::post('/meeting-points', [MeetingPointController::class, 'store'])->name('meeting_points.store');
+
+});
+
+Route::middleware('auth')->group(function () {
+
+    Route::get('/schedules', [DepartureScheduleController::class, 'index'])->name('schedules.index');
+    Route::get('/schedules/create', [DepartureScheduleController::class, 'create'])->name('schedules.create');
+    Route::post('/schedules', [DepartureScheduleController::class, 'store'])->name('schedules.store');
 
 });
 
