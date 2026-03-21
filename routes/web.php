@@ -7,6 +7,7 @@ use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\CityController;
 use App\Http\Controllers\MeetingPointController;
 use App\Http\Controllers\DepartureScheduleController;
+use App\Http\Controllers\BookingController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -68,6 +69,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/schedules', [DepartureScheduleController::class, 'index'])->name('schedules.index');
     Route::get('/schedules/create', [DepartureScheduleController::class, 'create'])->name('schedules.create');
     Route::post('/schedules', [DepartureScheduleController::class, 'store'])->name('schedules.store');
+
+});
+
+Route::middleware('auth')->group(function () {
+
+    Route::get('/booking', [BookingController::class, 'index'])->name('booking.index');
+    Route::get('/booking/create/{schedule}', [BookingController::class, 'create'])->name('booking.create');
+    Route::post('/booking/store', [BookingController::class, 'store'])->name('booking.store');
 
 });
 
