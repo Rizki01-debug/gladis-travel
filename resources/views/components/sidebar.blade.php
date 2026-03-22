@@ -24,13 +24,23 @@
         <li class="nav-item">
             <a href="{{ route('schedules.index') }}" class="nav-link text-white">Schedules</a>
         </li>
-        
+
+        <li class="nav-item">
+            <a href="{{ route('driver.index') }}" class="nav-link text-white">Driver</a>
+        </li>
+
+        <li class="nav-item">
+            <a href="{{ route('finance.report') }}" class="nav-link text-white">
+                Laporan
+            </a>
+        </li>
+
         <li class="nav-item">
             <a href="#" class="nav-link text-white">Drivers</a>
         </li>
 
         <li class="nav-item">
-            <a href="#" class="nav-link text-white">Booking</a>
+            <a href="{{ route('booking.index') }}" class="nav-link text-white">Booking</a>
         </li>
 
     </ul>

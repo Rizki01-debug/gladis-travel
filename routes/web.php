@@ -8,6 +8,8 @@ use App\Http\Controllers\CityController;
 use App\Http\Controllers\MeetingPointController;
 use App\Http\Controllers\DepartureScheduleController;
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\DriverController;
+use App\Http\Controllers\FinanceController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -46,7 +48,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/vehicles', [VehicleController::class, 'index'])->name('vehicles.index');
     Route::get('/vehicles/create', [VehicleController::class, 'create'])->name('vehicles.create');
     Route::post('/vehicles', [VehicleController::class, 'store'])->name('vehicles.store');
-
 });
 
 
@@ -61,7 +62,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/meeting-points', [MeetingPointController::class, 'index'])->name('meeting_points.index');
     Route::get('/meeting-points/create', [MeetingPointController::class, 'create'])->name('meeting_points.create');
     Route::post('/meeting-points', [MeetingPointController::class, 'store'])->name('meeting_points.store');
-
 });
 
 Route::middleware('auth')->group(function () {
@@ -69,7 +69,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/schedules', [DepartureScheduleController::class, 'index'])->name('schedules.index');
     Route::get('/schedules/create', [DepartureScheduleController::class, 'create'])->name('schedules.create');
     Route::post('/schedules', [DepartureScheduleController::class, 'store'])->name('schedules.store');
-
 });
 
 Route::middleware('auth')->group(function () {
@@ -77,7 +76,23 @@ Route::middleware('auth')->group(function () {
     Route::get('/booking', [BookingController::class, 'index'])->name('booking.index');
     Route::get('/booking/create/{schedule}', [BookingController::class, 'create'])->name('booking.create');
     Route::post('/booking/store', [BookingController::class, 'store'])->name('booking.store');
+});
 
+Route::middleware('auth')->group(function () {
+
+    Route::get('/driver', [DriverController::class, 'index'])->name('driver.index');
+    Route::get('/driver/{id}', [DriverController::class, 'show'])->name('driver.show');
+});
+
+Route::middleware('auth')->group(function () {
+
+    Route::get('/finance', [FinanceController::class, 'index'])->name('finance.index');
+
+    Route::get('/expense/create', [FinanceController::class, 'createExpense'])->name('expense.create');
+
+    Route::post('/expense/store', [FinanceController::class, 'storeExpense'])->name('expense.store');
+
+    Route::get('/finance/report', [FinanceController::class, 'report'])->name('finance.report');
 });
 
 require __DIR__ . '/auth.php';

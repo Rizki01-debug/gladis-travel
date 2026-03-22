@@ -17,4 +17,14 @@ class Booking extends Model
         'price_estimation',   // 🔥 tambah ini
         'status'
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function schedule()
+    {
+        return $this->belongsTo(DepartureSchedule::class, 'schedule_id');
+    }
 }

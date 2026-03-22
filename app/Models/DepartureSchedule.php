@@ -27,4 +27,9 @@ class DepartureSchedule extends Model
     {
         return $this->belongsTo(City::class, 'destination_city_id');
     }
+
+    public function bookings()
+    {
+        return $this->hasMany(Booking::class, 'schedule_id');
+    }
 }
