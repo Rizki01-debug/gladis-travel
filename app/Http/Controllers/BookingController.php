@@ -10,6 +10,7 @@ use App\Models\BookingSeat;
 use App\Models\DepartureSchedule;
 use App\Models\Seat;
 use App\Models\MeetingPoint;
+use App\Models\Tariff;
 
 class BookingController extends Controller
 {
@@ -27,12 +28,21 @@ class BookingController extends Controller
 
         $meetingPoints = MeetingPoint::where('city_id', $schedule->origin_city_id)->get();
 
-        // 🔥 TAMBAHAN VALIDASI FRONTEND
+        // 🔥 VALIDASI FRONTEND
         $bookedSeats = BookingSeat::whereHas('booking', function ($q) use ($schedule) {
             $q->where('schedule_id', $schedule->id);
         })->pluck('seat_id')->toArray();
 
-        return view('booking.create', compact('schedule', 'seats', 'meetingPoints', 'bookedSeats'));
+        // 🔥 TARIF DINAMIS
+        $tariff = Tariff::first();
+
+        return view('booking.create', compact(
+            'schedule',
+            'seats',
+            'meetingPoints',
+            'bookedSeats',
+            'tariff'
+        ));
     }
 
     public function store(Request $request)

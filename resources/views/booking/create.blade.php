@@ -58,6 +58,11 @@
 
 @section('scripts')
     <script>
+        // 🔥 TARIF DARI DATABASE
+        var tarif = {{ $tariff->price_per_km }};
+    </script>
+
+    <script>
         // ================= TOGGLE UI =================
         document.getElementById('pickup_type').addEventListener('change', function() {
             let type = this.value;
@@ -66,7 +71,6 @@
                 document.getElementById('map_section').style.display = 'block';
                 document.getElementById('meeting_point_section').style.display = 'none';
 
-                // 🔥 FIX MAP
                 setTimeout(() => {
                     map.invalidateSize();
                 }, 200);
@@ -84,8 +88,8 @@
 
         var routingControl = null;
         var origin = L.latLng(-6.9, 107.6);
-        var tarif = 1500;
 
+        // 🔥 CLICK MAP
         map.on('click', function(e) {
 
             var destination = L.latLng(e.latlng.lat, e.latlng.lng);
@@ -105,6 +109,7 @@
                 var route = e.routes[0];
                 var distance = route.summary.totalDistance / 1000;
 
+                // SET DATA
                 document.getElementById('distance_km').value = distance.toFixed(2);
                 document.getElementById('distance_text').innerText = distance.toFixed(2);
 
