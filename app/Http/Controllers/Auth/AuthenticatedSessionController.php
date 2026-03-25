@@ -12,7 +12,7 @@ use Illuminate\View\View;
 class AuthenticatedSessionController extends Controller
 {
     /**
-     * Display the login view.
+     * Display login page
      */
     public function create(): View
     {
@@ -20,7 +20,7 @@ class AuthenticatedSessionController extends Controller
     }
 
     /**
-     * Handle an incoming authentication request.
+     * Handle login
      */
     public function store(LoginRequest $request): RedirectResponse
     {
@@ -30,43 +30,41 @@ class AuthenticatedSessionController extends Controller
 
         $user = Auth::user();
 
-        // safety check (hindari error null)
+        // 🔐 safety check
         if (!$user || !$user->role_id) {
+            Auth::logout();
+
             return redirect('/login')->withErrors([
-                'email' => 'Role user tidak ditemukan.',
+                'email' => 'Role user tidak valid.',
             ]);
         }
 
-        switch ($user->role_id) {
-            case 1:
-                return redirect()->route('superadmin.dashboard');
-
-            case 2:
-                return redirect()->route('admin.dashboard');
-
-            case 3:
-                return redirect()->route('driver.dashboard');
-
-            case 4:
-                return redirect()->route('booking');
-
-            default:
-                Auth::logout();
-                return redirect('/login')->withErrors([
-                    'email' => 'Role tidak dikenali.',
-                ]);
-        }
+        // 🔥 redirect berdasarkan role
+        return redirect()->route($this->redirectTo($user->role_id));
     }
 
     /**
-     * Destroy an authenticated session.
+     * Mapping role → route
+     */
+    private function redirectTo($roleId): string
+    {
+        return match ($roleId) {
+            1 => 'superadmin.dashboard',
+            2 => 'admin.dashboard',
+            3 => 'driver.dashboard',
+            4 => 'booking.index', // 🔥 fix konsisten
+            default => 'login'
+        };
+    }
+
+    /**
+     * Logout
      */
     public function destroy(Request $request): RedirectResponse
     {
-        Auth::guard('web')->logout();
+        Auth::logout();
 
         $request->session()->invalidate();
-
         $request->session()->regenerateToken();
 
         return redirect('/');

@@ -6,6 +6,9 @@ use Illuminate\Database\Seeder;
 use Database\Seeders\RoleSeeder;
 use Database\Seeders\SuperAdminSeeder;
 use Database\Seeders\TariffSeeder;
+use Database\Seeders\AdminSeeder;
+use Database\Seeders\DriverSeeder;
+use Database\Seeders\PassengerSeeder;
 
 class DatabaseSeeder extends Seeder
 {
@@ -17,7 +20,10 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RoleSeeder::class,
             SuperAdminSeeder::class,
-            TariffSeeder::class, // 🔥 tambah ini
+            AdminSeeder::class,
+            DriverSeeder::class,
+            PassengerSeeder::class,
+            TariffSeeder::class,
         ]);
     }
 }

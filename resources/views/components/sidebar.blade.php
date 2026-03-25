@@ -18,7 +18,7 @@
         </li>
 
         <li class="nav-item">
-            <a href="{{ route('meeting_points.index') }}" class="nav-link text-white">Meeting Points</a>
+            {{-- <a href="{{ route('meeting_points.index') }}" class="nav-link text-white">Meeting Points</a> --}}
         </li>
 
         <li class="nav-item">
