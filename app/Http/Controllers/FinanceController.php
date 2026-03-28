@@ -3,14 +3,29 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+
 use App\Models\Booking;
 use App\Models\Expense;
 
 class FinanceController extends Controller
 {
-    // DASHBOARD KEUANGAN
+    // 🔒 HELPER PROTECTION (biar gak ngulang terus)
+    private function authorizeAdmin()
+    {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        if (!Auth::check() || (!$user->isAdmin() && !$user->isSuperAdmin())) {
+            abort(403, 'Akses ditolak');
+        }
+    }
+
+    // ================= DASHBOARD =================
     public function index()
     {
+        $this->authorizeAdmin();
+
         $income = Booking::sum('price_estimation');
         $expense = Expense::sum('amount');
 
@@ -26,45 +41,45 @@ class FinanceController extends Controller
         ));
     }
 
-    // FORM TAMBAH PENGELUARAN
+    // ================= FORM TAMBAH =================
     public function createExpense()
     {
+        $this->authorizeAdmin();
+
         return view('finance.create_expense');
     }
 
-    // SIMPAN PENGELUARAN
+    // ================= SIMPAN =================
     public function storeExpense(Request $request)
     {
-        $request->validate([
-            'title' => 'required',
+        $this->authorizeAdmin();
+
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
             'amount' => 'required|numeric',
-            'category' => 'required',
-            'expense_date' => 'required|date'
+            'category' => 'required|string|max:100',
+            'expense_date' => 'required|date',
+            'description' => 'nullable|string'
         ]);
 
-        Expense::create([
-            'title' => $request->title,
-            'amount' => $request->amount,
-            'category' => $request->category,
-            'description' => $request->description,
-            'expense_date' => $request->expense_date
-        ]);
+        Expense::create($validated);
 
         return redirect()->route('finance.index')
             ->with('success', 'Pengeluaran berhasil ditambahkan!');
     }
 
+    // ================= REPORT =================
     public function report(Request $request)
     {
+        $this->authorizeAdmin();
+
         $start = $request->start_date;
         $end = $request->end_date;
 
-        // filter pemasukan
         $bookings = Booking::when($start && $end, function ($q) use ($start, $end) {
             $q->whereBetween('created_at', [$start, $end]);
         })->get();
 
-        // filter pengeluaran
         $expenses = Expense::when($start && $end, function ($q) use ($start, $end) {
             $q->whereBetween('expense_date', [$start, $end]);
         })->get();

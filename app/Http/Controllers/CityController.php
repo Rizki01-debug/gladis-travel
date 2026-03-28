@@ -4,31 +4,51 @@ namespace App\Http\Controllers;
 
 use App\Models\City;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class CityController extends Controller
 {
     public function index()
     {
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        if (!Auth::check() || !$user->isAdmin()) {
+            abort(403);
+        }
+
         $cities = City::all();
-        return view('city.index', compact('cities'));
+        return view('cities.index', compact('cities'));
     }
 
     public function create()
     {
-        return view('city.create');
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        if (!Auth::check() || !$user->isAdmin()) {
+            abort(403);
+        }
+
+        return view('cities.create');
     }
 
     public function store(Request $request)
     {
-        $request->validate([
-            'name' => 'required'
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
+
+        if (!Auth::check() || !$user->isAdmin()) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255'
         ]);
 
-        City::create([
-            'name' => $request->name
-        ]);
+        City::create($validated);
 
         return redirect()->route('cities.index')
-            ->with('success', 'Kota berhasil ditambahkan');
+            ->with('success', 'Kota berhasil ditambahkan!');
     }
 }
