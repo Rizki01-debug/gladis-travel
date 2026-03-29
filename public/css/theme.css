@@ -1,0 +1,34 @@
+:root {
+    --primary-color: #0d6efd; /* default biru */
+    --secondary-color: #6c757d;
+    --background-color: #f5f7fb;
+}
+
+/* BACKGROUND GLOBAL */
+body {
+    background-color: var(--background-color);
+}
+
+/* CARD */
+.card-custom {
+    border-left: 4px solid var(--primary-color);
+}
+
+/* BUTTON */
+.btn-primary {
+    background-color: var(--primary-color) !important;
+    border: none;
+}
+
+.btn-primary:hover {
+    opacity: 0.9;
+}
+
+/* LINK */
+a {
+    text-decoration: none;
+}
+
+a:hover {
+    opacity: 0.8;
+}

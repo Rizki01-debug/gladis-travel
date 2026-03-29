@@ -17,102 +17,77 @@ use App\Http\Controllers\ThemeController;
 | PUBLIC
 |--------------------------------------------------------------------------
 */
-
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', fn() => view('welcome'));
 
 /*
 |--------------------------------------------------------------------------
-| AUTH USER (UMUM)
+| AUTH (SEMUA USER LOGIN)
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth')->group(function () {
 
-    // Profile
+    /*
+    |--------------------------------------------------------------------------
+    | DASHBOARD (ROLE BASED REDIRECT)
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/super-admin/dashboard', fn() => view('dashboard.super_admin'))->name('superadmin.dashboard');
+    Route::get('/admin/dashboard', fn() => view('dashboard.admin'))->name('admin.dashboard');
+    Route::get('/driver/dashboard', fn() => view('dashboard.driver'))->name('driver.dashboard');
+
+    /*
+    |--------------------------------------------------------------------------
+    | PROFILE
+    |--------------------------------------------------------------------------
+    */
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-});
 
-/*
-|--------------------------------------------------------------------------
-| SUPER ADMIN
-|--------------------------------------------------------------------------
-*/
-Route::middleware(['auth', 'role:1'])->group(function () {
-
-    Route::get('/super-admin/dashboard', function () {
-        return view('dashboard.super_admin');
-    })->name('superadmin.dashboard');
-
-    // Vehicles
+    /*
+    |--------------------------------------------------------------------------
+    | MASTER DATA (DIHANDLE DI CONTROLLER 🔥)
+    |--------------------------------------------------------------------------
+    */
     Route::resource('vehicles', VehicleController::class);
-
-    // Cities
     Route::resource('cities', CityController::class);
-
-    // Meeting Points
     Route::resource('meeting-points', MeetingPointController::class);
-
-    // Schedules
     Route::resource('schedules', DepartureScheduleController::class);
-});
 
-/*
-|--------------------------------------------------------------------------
-| ADMIN
-|--------------------------------------------------------------------------
-*/
-Route::middleware(['auth', 'role:2'])->group(function () {
+    /*
+    |--------------------------------------------------------------------------
+    | BOOKING (PASSENGER)
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/booking', [BookingController::class, 'index'])->name('booking.index');
+    Route::get('/booking/create/{schedule}', [BookingController::class, 'create'])->name('booking.create');
+    Route::post('/booking/store', [BookingController::class, 'store'])->name('booking.store');
 
-    Route::get('/admin/dashboard', function () {
-        return view('dashboard.admin');
-    })->name('admin.dashboard');
+    /*
+    |--------------------------------------------------------------------------
+    | DRIVER
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/driver', [DriverController::class, 'index'])->name('driver.index');
+    Route::get('/driver/{id}', [DriverController::class, 'show'])->name('driver.show');
 
-    // Finance
+    /*
+    |--------------------------------------------------------------------------
+    | FINANCE (ADMIN + SUPER ADMIN)
+    |--------------------------------------------------------------------------
+    */
     Route::get('/finance', [FinanceController::class, 'index'])->name('finance.index');
     Route::get('/expense/create', [FinanceController::class, 'createExpense'])->name('expense.create');
     Route::post('/expense/store', [FinanceController::class, 'storeExpense'])->name('expense.store');
     Route::get('/finance/report', [FinanceController::class, 'report'])->name('finance.report');
+
+    /*
+    |--------------------------------------------------------------------------
+    | SETTINGS + THEME
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/settings', fn() => view('settings.index'))->name('settings.index');
+    Route::post('/theme/update', [ThemeController::class, 'update'])->name('theme.update');
 });
-
-/*
-|--------------------------------------------------------------------------
-| DRIVER
-|--------------------------------------------------------------------------
-*/
-Route::middleware(['auth', 'role:3'])->group(function () {
-
-    Route::get('/driver/dashboard', function () {
-        return view('dashboard.driver');
-    })->name('driver.dashboard');
-
-    Route::get('/driver', [DriverController::class, 'index'])->name('driver.index');
-    Route::get('/driver/{id}', [DriverController::class, 'show'])->name('driver.show');
-});
-
-/*
-|--------------------------------------------------------------------------
-| PASSENGER
-|--------------------------------------------------------------------------
-*/
-Route::middleware(['auth', 'role:4'])->group(function () {
-
-    Route::get('/booking', [BookingController::class, 'index'])->name('booking.index');
-    Route::get('/booking/create/{schedule}', [BookingController::class, 'create'])->name('booking.create');
-    Route::post('/booking/store', [BookingController::class, 'store'])->name('booking.store');
-});
-
-/*
-|--------------------------------------------------------------------------
-| THEME COLOR
-|--------------------------------------------------------------------------
-*/
-Route::post('/theme/update', [ThemeController::class, 'update'])
-    ->middleware('auth')
-    ->name('theme.update');
-
-Route::get('/settings', fn() => view('settings.index'))->name('settings.index');
 
 require __DIR__ . '/auth.php';

@@ -12,17 +12,28 @@ class ThemeController extends Controller
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        if (!Auth::check()) {
+        if (!$user) {
             abort(403);
         }
 
-        $validated = $request->validate([
-            'theme_color' => 'required|string'
+        $request->validate([
+            'theme_color' => 'nullable|string',
+            'custom_color' => 'nullable|string',
+            'use_custom' => 'nullable'
         ]);
 
-        $user->update([
-            'theme_color' => $validated['theme_color']
-        ]);
+        // 🔥 CEK: user pakai custom atau tidak
+        if ($request->has('use_custom')) {
+
+            $user->update([
+                'theme_color' => $request->custom_color
+            ]);
+        } else {
+
+            $user->update([
+                'theme_color' => $request->theme_color ?? 'blue'
+            ]);
+        }
 
         return back()->with('success', 'Tema berhasil diubah!');
     }

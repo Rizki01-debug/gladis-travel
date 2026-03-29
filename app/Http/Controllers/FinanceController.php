@@ -10,13 +10,13 @@ use App\Models\Expense;
 
 class FinanceController extends Controller
 {
-    // 🔒 HELPER PROTECTION (biar gak ngulang terus)
-    private function authorizeAdmin()
+    // 🔒 PROTECTION (ADMIN + SUPER ADMIN)
+    private function authorizeFinance()
     {
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        if (!Auth::check() || (!$user->isAdmin() && !$user->isSuperAdmin())) {
+        if (!$user || !($user->isAdmin() || $user->isSuperAdmin())) {
             abort(403, 'Akses ditolak');
         }
     }
@@ -24,7 +24,7 @@ class FinanceController extends Controller
     // ================= DASHBOARD =================
     public function index()
     {
-        $this->authorizeAdmin();
+        $this->authorizeFinance();
 
         $income = Booking::sum('price_estimation');
         $expense = Expense::sum('amount');
@@ -44,7 +44,7 @@ class FinanceController extends Controller
     // ================= FORM TAMBAH =================
     public function createExpense()
     {
-        $this->authorizeAdmin();
+        $this->authorizeFinance();
 
         return view('finance.create_expense');
     }
@@ -52,11 +52,11 @@ class FinanceController extends Controller
     // ================= SIMPAN =================
     public function storeExpense(Request $request)
     {
-        $this->authorizeAdmin();
+        $this->authorizeFinance();
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'amount' => 'required|numeric',
+            'amount' => 'required|numeric|min:0',
             'category' => 'required|string|max:100',
             'expense_date' => 'required|date',
             'description' => 'nullable|string'
@@ -71,7 +71,7 @@ class FinanceController extends Controller
     // ================= REPORT =================
     public function report(Request $request)
     {
-        $this->authorizeAdmin();
+        $this->authorizeFinance();
 
         $start = $request->start_date;
         $end = $request->end_date;

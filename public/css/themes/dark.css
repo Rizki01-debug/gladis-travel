@@ -1,0 +1,13 @@
+:root {
+    --primary-color: #212529;
+    --background-color: #1e1e2f;
+}
+
+/* DARK MODE OVERRIDE */
+body {
+    color: white;
+}
+
+.card-custom {
+    background-color: #2c2c3a;
+}
