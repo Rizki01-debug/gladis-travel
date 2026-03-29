@@ -8,14 +8,18 @@ use Illuminate\Support\Facades\Auth;
 
 class CityController extends Controller
 {
-    public function index()
+    private function authorizeAdmin()
     {
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        if (!Auth::check() || !$user->isAdmin()) {
-            abort(403);
+        if (!$user || !($user->isSuperAdmin() || $user->isAdmin())) {
+            abort(403, 'Akses ditolak');
         }
+    }
+    public function index()
+    {
+        $this->authorizeAdmin();
 
         $cities = City::all();
         return view('cities.index', compact('cities'));
@@ -23,24 +27,14 @@ class CityController extends Controller
 
     public function create()
     {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-
-        if (!Auth::check() || !$user->isAdmin()) {
-            abort(403);
-        }
+        $this->authorizeAdmin();
 
         return view('cities.create');
     }
 
     public function store(Request $request)
     {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-
-        if (!Auth::check() || !$user->isAdmin()) {
-            abort(403);
-        }
+        $this->authorizeAdmin();
 
         $validated = $request->validate([
             'name' => 'required|string|max:255'

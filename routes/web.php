@@ -10,12 +10,14 @@ use App\Http\Controllers\DepartureScheduleController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\DriverController;
 use App\Http\Controllers\FinanceController;
+use App\Http\Controllers\ThemeController;
 
 /*
 |--------------------------------------------------------------------------
 | PUBLIC
 |--------------------------------------------------------------------------
 */
+
 Route::get('/', function () {
     return view('welcome');
 });
@@ -31,7 +33,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-
 });
 
 /*
@@ -56,7 +57,6 @@ Route::middleware(['auth', 'role:1'])->group(function () {
 
     // Schedules
     Route::resource('schedules', DepartureScheduleController::class);
-
 });
 
 /*
@@ -75,7 +75,6 @@ Route::middleware(['auth', 'role:2'])->group(function () {
     Route::get('/expense/create', [FinanceController::class, 'createExpense'])->name('expense.create');
     Route::post('/expense/store', [FinanceController::class, 'storeExpense'])->name('expense.store');
     Route::get('/finance/report', [FinanceController::class, 'report'])->name('finance.report');
-
 });
 
 /*
@@ -91,7 +90,6 @@ Route::middleware(['auth', 'role:3'])->group(function () {
 
     Route::get('/driver', [DriverController::class, 'index'])->name('driver.index');
     Route::get('/driver/{id}', [DriverController::class, 'show'])->name('driver.show');
-
 });
 
 /*
@@ -104,7 +102,17 @@ Route::middleware(['auth', 'role:4'])->group(function () {
     Route::get('/booking', [BookingController::class, 'index'])->name('booking.index');
     Route::get('/booking/create/{schedule}', [BookingController::class, 'create'])->name('booking.create');
     Route::post('/booking/store', [BookingController::class, 'store'])->name('booking.store');
-
 });
+
+/*
+|--------------------------------------------------------------------------
+| THEME COLOR
+|--------------------------------------------------------------------------
+*/
+Route::post('/theme/update', [ThemeController::class, 'update'])
+    ->middleware('auth')
+    ->name('theme.update');
+
+Route::get('/settings', fn() => view('settings.index'))->name('settings.index');
 
 require __DIR__ . '/auth.php';

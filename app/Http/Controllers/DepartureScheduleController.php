@@ -10,14 +10,19 @@ use Illuminate\Support\Facades\Auth;
 
 class DepartureScheduleController extends Controller
 {
-    public function index()
+    private function authorizeAdminOrSuperAdmin()
     {
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        if (!Auth::check() || !$user->isAdmin()) {
-            abort(403);
+        if (!Auth::check() || !($user->isSuperAdmin() || $user->isAdmin())) {
+            abort(403, 'Akses ditolak');
         }
+    }
+
+    public function index()
+    {
+        $this->authorizeAdminOrSuperAdmin();
 
         $schedules = DepartureSchedule::with(['origin', 'destination', 'vehicle'])->get();
 
@@ -26,12 +31,7 @@ class DepartureScheduleController extends Controller
 
     public function create()
     {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-
-        if (!Auth::check() || !$user->isAdmin()) {
-            abort(403);
-        }
+        $this->authorizeAdminOrSuperAdmin();
 
         $cities = City::all();
         $vehicles = Vehicle::all();
@@ -41,17 +41,12 @@ class DepartureScheduleController extends Controller
 
     public function store(Request $request)
     {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-
-        if (!Auth::check() || !$user->isAdmin()) {
-            abort(403);
-        }
+        $this->authorizeAdminOrSuperAdmin();
 
         $validated = $request->validate([
-            'origin_city_id' => 'required',
-            'destination_city_id' => 'required',
-            'vehicle_id' => 'required',
+            'origin_city_id' => 'required|exists:cities,id',
+            'destination_city_id' => 'required|exists:cities,id',
+            'vehicle_id' => 'required|exists:vehicles,id',
             'departure_time' => 'required'
         ]);
 

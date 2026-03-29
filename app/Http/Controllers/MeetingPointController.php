@@ -9,27 +9,28 @@ use Illuminate\Support\Facades\Auth;
 
 class MeetingPointController extends Controller
 {
-    public function index()
+    private function authorizeAdmin()
     {
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        if (!Auth::check() || !$user->isAdmin()) {
-            abort(403);
+        if (!$user || !($user->isSuperAdmin() || $user->isAdmin())) {
+            abort(403, 'Akses ditolak');
         }
+    }
+
+    public function index()
+    {
+        $this->authorizeAdmin();
 
         $points = MeetingPoint::with('city')->get();
+
         return view('meeting_points.index', compact('points'));
     }
 
     public function create()
     {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-
-        if (!Auth::check() || !$user->isAdmin()) {
-            abort(403);
-        }
+        $this->authorizeAdmin();
 
         $cities = City::all();
 
@@ -38,12 +39,7 @@ class MeetingPointController extends Controller
 
     public function store(Request $request)
     {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-
-        if (!Auth::check() || !$user->isAdmin()) {
-            abort(403);
-        }
+        $this->authorizeAdmin();
 
         $validated = $request->validate([
             'city_id' => 'required',
