@@ -2,28 +2,45 @@
 
 @section('content')
 
-<h3>Jadwal Saya</h3>
+<h3>📋 Booking Masuk</h3>
 
-<table class="table table-bordered">
+<table class="table table-bordered mt-3">
     <thead>
         <tr>
+            <th>ID</th>
+            <th>Penumpang</th>
             <th>Rute</th>
-            <th>Jam</th>
+            <th>Status</th>
             <th>Aksi</th>
         </tr>
     </thead>
+
     <tbody>
-        @foreach($schedules as $s)
-        <tr>
-            <td>{{ $s->origin->name }} → {{ $s->destination->name }}</td>
-            <td>{{ $s->departure_time }}</td>
-            <td>
-                <a href="{{ route('driver.show', $s->id) }}" class="btn btn-primary">
-                    Lihat Penumpang
-                </a>
-            </td>
-        </tr>
-        @endforeach
+        @forelse ($bookings as $b)
+            <tr>
+                <td>{{ $b->id }}</td>
+                <td>{{ $b->user->name }}</td>
+                <td>
+                    {{ $b->schedule->origin->name }} →
+                    {{ $b->schedule->destination->name }}
+                </td>
+                <td>
+                    <span class="badge bg-warning">{{ $b->status }}</span>
+                </td>
+                <td>
+                    <a href="{{ route('driver.show', $b->id) }}"
+                       class="btn btn-info btn-sm">
+                        Detail
+                    </a>
+                </td>
+            </tr>
+        @empty
+            <tr>
+                <td colspan="5" class="text-center">
+                    Tidak ada booking
+                </td>
+            </tr>
+        @endforelse
     </tbody>
 </table>
 

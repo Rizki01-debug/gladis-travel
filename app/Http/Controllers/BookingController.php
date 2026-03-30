@@ -112,4 +112,14 @@ class BookingController extends Controller
             ->route('booking.index')
             ->with('success', 'Booking berhasil!');
     }
+
+    public function myBooking()
+    {
+        $bookings = Booking::with(['schedule.origin', 'schedule.destination'])
+            ->where('user_id', Auth::id())
+            ->latest()
+            ->get();
+
+        return view('booking.my', compact('bookings'));
+    }
 }

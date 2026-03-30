@@ -26,7 +26,8 @@ class FinanceController extends Controller
     {
         $this->authorizeFinance();
 
-        $income = Booking::sum('price_estimation');
+        $income = Booking::where('status', 'completed')
+            ->sum('price_estimation');
         $expense = Expense::sum('amount');
 
         $balance = $income - $expense;

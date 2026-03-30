@@ -2,37 +2,44 @@
 
 @section('content')
 
-<h3>Detail Perjalanan</h3>
+<h3>🚗 Detail Booking</h3>
 
-<p>
-    {{ $schedule->origin->name }} → {{ $schedule->destination->name }}
-</p>
+<div class="card p-3">
 
-<table class="table">
-    <thead>
-        <tr>
-            <th>Nama Penumpang</th>
-            <th>Pickup</th>
-            <th>Lokasi</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach($schedule->bookings as $booking)
-        <tr>
-            <td>{{ $booking->user->name }}</td>
-            <td>{{ $booking->pickup_type }}</td>
-            <td>
-                @if($booking->pickup_maps)
-                    <a href="https://www.google.com/maps?q={{ $booking->pickup_maps }}" target="_blank">
-                        Lihat Map
-                    </a>
-                @else
-                    Meeting Point
-                @endif
-            </td>
-        </tr>
-        @endforeach
-    </tbody>
-</table>
+    <p><b>Penumpang:</b> {{ $booking->user->name }}</p>
+
+    <p><b>Rute:</b>
+        {{ $booking->schedule->origin->name }} →
+        {{ $booking->schedule->destination->name }}
+    </p>
+
+    <p><b>Kendaraan:</b> {{ $booking->schedule->vehicle->name }}</p>
+
+    <p><b>Status:</b>
+        <span class="badge bg-warning">{{ $booking->status }}</span>
+    </p>
+
+    {{-- ================= AKSI ================= --}}
+    <div class="mt-3">
+
+        {{-- TERIMA --}}
+        <form action="{{ route('driver.confirm', $booking->id) }}" method="POST">
+            @csrf
+            <button class="btn btn-success">
+                ✅ Terima Booking
+            </button>
+        </form>
+
+        {{-- TOLAK --}}
+        <form action="{{ route('driver.reject', $booking->id) }}" method="POST" class="mt-2">
+            @csrf
+            <button class="btn btn-danger">
+                ❌ Tolak Booking
+            </button>
+        </form>
+
+    </div>
+
+</div>
 
 @endsection

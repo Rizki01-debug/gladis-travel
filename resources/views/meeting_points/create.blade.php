@@ -4,7 +4,7 @@
 
 <h3>Tambah Meeting Point</h3>
 
-<form method="POST" action="{{ route('meeting_points.store') }}">
+<form method="POST" action="{{ route('meeting-points.store') }}">
     @csrf
 
     <select name="city_id" class="form-control mb-3">

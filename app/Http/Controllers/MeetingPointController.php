@@ -48,7 +48,7 @@ class MeetingPointController extends Controller
 
         MeetingPoint::create($validated);
 
-        return redirect()->route('meeting_points.index')
+        return redirect()->route('meeting-points.index')
             ->with('success', 'Meeting point berhasil ditambahkan!');
     }
 }
