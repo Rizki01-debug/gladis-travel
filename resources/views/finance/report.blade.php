@@ -1,20 +1,35 @@
 @extends('layouts.app')
 
 @section('content')
-
 <h3>Laporan Keuangan</h3>
 
 <form method="GET" class="mb-3">
-    <div class="row">
-        <div class="col">
-            <input type="date" name="start_date" class="form-control" value="{{ $start }}">
+    <div class="row g-2">
+
+        <div class="col-md-3">
+            <input type="date" name="start_date" class="form-control"
+                value="{{ $start ?? '' }}">
         </div>
-        <div class="col">
-            <input type="date" name="end_date" class="form-control" value="{{ $end }}">
+
+        <div class="col-md-3">
+            <input type="date" name="end_date" class="form-control"
+                value="{{ $end ?? '' }}">
         </div>
-        <div class="col">
-            <button class="btn btn-primary">Filter</button>
+
+        <div class="col-md-2">
+            <button class="btn btn-primary w-100">Filter</button>
         </div>
+
+        <div class="col-md-2">
+            <a href="{{ route('finance.export.pdf', [
+                'start_date' => request('start_date'),
+                'end_date' => request('end_date')
+            ]) }}"
+                class="btn btn-danger w-100">
+                Download PDF
+            </a>
+        </div>
+
     </div>
 </form>
 
@@ -31,13 +46,19 @@
         </tr>
     </thead>
     <tbody>
-        @foreach($bookings as $b)
-        <tr>
-            <td>#{{ $b->id }}</td>
-            <td>Rp {{ number_format($b->price_estimation) }}</td>
-            <td>{{ $b->created_at }}</td>
-        </tr>
-        @endforeach
+        @forelse($transactions as $t)
+            <tr>
+                <td>#{{ $t->booking_id }}</td>
+                <td>Rp {{ number_format($t->amount) }}</td>
+                <td>{{ $t->created_at }}</td>
+            </tr>
+        @empty
+            <tr>
+                <td colspan="3" class="text-center text-muted">
+                    Tidak ada data pemasukan
+                </td>
+            </tr>
+        @endforelse
     </tbody>
 </table>
 
@@ -53,14 +74,20 @@
         </tr>
     </thead>
     <tbody>
-        @foreach($expenses as $e)
-        <tr>
-            <td>{{ $e->title }}</td>
-            <td>{{ $e->category }}</td>
-            <td>Rp {{ number_format($e->amount) }}</td>
-            <td>{{ $e->expense_date }}</td>
-        </tr>
-        @endforeach
+        @forelse ($expenses as $e)
+            <tr>
+                <td>{{ $e->title }}</td>
+                <td>{{ $e->category }}</td>
+                <td>Rp {{ number_format($e->amount) }}</td>
+                <td>{{ $e->expense_date }}</td>
+            </tr>
+        @empty
+            <tr>
+                <td colspan="4" class="text-center text-muted">
+                    Tidak ada data pengeluaran
+                </td>
+            </tr>
+        @endforelse
     </tbody>
 </table>
 

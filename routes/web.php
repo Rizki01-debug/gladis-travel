@@ -81,43 +81,58 @@ Route::middleware('auth')->group(function () {
     */
     Route::prefix('driver')->name('driver.')->group(function () {
 
-        Route::get('/', [DriverController::class, 'index'])->name('index');
-
-        // 🔥 TRIP (HARUS DI ATAS)
+        // ✅ SPESIFIK DULU
         Route::get('/trips', [DriverController::class, 'trips'])
             ->name('trip.index');
 
         Route::post('/trip/{id}/complete', [DriverController::class, 'complete'])
             ->name('trip.complete');
 
-        // 🔥 AKSI BOOKING
+        // ✅ BARU GENERAL
+        Route::get('/', [DriverController::class, 'index'])->name('index');
+        Route::get('/{id}', [DriverController::class, 'show'])->name('show');
+
         Route::post('/{id}/confirm', [DriverController::class, 'confirm'])->name('confirm');
         Route::post('/{id}/reject', [DriverController::class, 'reject'])->name('reject');
-
-        // ❗ PALING BAWAH
-        Route::get('/{id}', [DriverController::class, 'show'])->name('show');
     });
+
+    Route::match(['GET', 'POST'], '/{id}/confirm', [DriverController::class, 'confirm']);
 
     /*
     |--------------------------------------------------------------------------
     | FINANCE
     |--------------------------------------------------------------------------
     */
-    Route::middleware(['auth'])->group(function () {
+    Route::prefix('finance')->name('finance.')->group(function () {
 
-        // ================= FINANCE =================
-        Route::get('/finance', [FinanceController::class, 'index'])->name('finance.index');
+        // ================= DASHBOARD =================
+        Route::get('/', [FinanceController::class, 'index'])
+            ->name('index');
 
+        // ================= EXPENSE =================
         Route::get('/expense/create', [FinanceController::class, 'createExpense'])
             ->name('expense.create');
 
         Route::post('/expense/store', [FinanceController::class, 'storeExpense'])
             ->name('expense.store');
 
-        Route::get('/finance/report', [FinanceController::class, 'report'])
-            ->name('finance.report');
-    });
+        // ================= REPORT =================
+        Route::get('/report', [FinanceController::class, 'report'])
+            ->name('report');
 
+        // ================= EXPORT PDF =================
+        Route::get('/export-pdf', [FinanceController::class, 'exportPdf'])
+            ->name('export.pdf');
+
+        // ================= SETORAN =================
+        Route::get('/setoran', [FinanceController::class, 'setoran'])
+            ->name('setoran');
+
+        // ================= KONFIRMASI SETORAN =================
+        Route::post('/setoran/{id}/confirm', [FinanceController::class, 'confirmSetoran'])
+            ->name('setoran.confirm');
+            
+    });
     /*
     |--------------------------------------------------------------------------
     | SETTINGS

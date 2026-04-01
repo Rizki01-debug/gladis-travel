@@ -85,6 +85,12 @@
                         📊 Laporan
                     </a>
                 </li>
+
+                <li class="nav-item">
+                    <a href="{{ route('finance.setoran') }}" class="nav-link text-white">
+                        💰 Setoran Driver
+                    </a>
+                </li>
             @endif
 
             {{-- ================= DRIVER ================= --}}
@@ -123,7 +129,6 @@
                         📋 Booking Saya
                     </a>
                 </li>
-                
             @endif
 
             {{-- ================= SETTINGS ================= --}}

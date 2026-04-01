@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
 
             $table->foreignId('booking_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('driver_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('driver_id')->constrained('users')->cascadeOnDelete();
             $table->foreignId('vehicle_id')->constrained()->cascadeOnDelete();
 
             // 🔥 STATUS (DEFAULT)

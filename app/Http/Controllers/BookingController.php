@@ -14,28 +14,30 @@ use App\Models\Tariff;
 
 class BookingController extends Controller
 {
-    // 🔒 PROTECTION (Passenger + Admin)
+    // ================= AUTH =================
     private function authorizeBookingAccess()
     {
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        if (!Auth::check() || (!$user->isPassenger() && !$user->isAdmin() && !$user->isSuperAdmin())) {
+        if (!Auth::check() || !$user->isPassenger()) {
             abort(403, 'Akses ditolak');
         }
     }
 
-    // ================= INDEX =================
+    // ================= LIST JADWAL =================
     public function index()
     {
         $this->authorizeBookingAccess();
 
-        $schedules = DepartureSchedule::with(['origin', 'destination', 'vehicle'])->get();
+        $schedules = DepartureSchedule::with(['origin', 'destination', 'vehicle'])
+            ->latest()
+            ->get();
 
         return view('booking.index', compact('schedules'));
     }
 
-    // ================= CREATE =================
+    // ================= FORM BOOKING =================
     public function create($id)
     {
         $this->authorizeBookingAccess();
@@ -46,12 +48,11 @@ class BookingController extends Controller
 
         $meetingPoints = MeetingPoint::where('city_id', $schedule->origin_city_id)->get();
 
-        // 🔥 kursi yang sudah dibooking
+        // 🔥 kursi sudah dibooking
         $bookedSeats = BookingSeat::whereHas('booking', function ($q) use ($schedule) {
             $q->where('schedule_id', $schedule->id);
         })->pluck('seat_id')->toArray();
 
-        // 🔥 tarif dinamis
         $tariff = Tariff::first();
 
         return view('booking.create', compact(
@@ -63,17 +64,26 @@ class BookingController extends Controller
         ));
     }
 
-    // ================= STORE =================
+    // ================= SIMPAN BOOKING =================
     public function store(Request $request)
     {
         $this->authorizeBookingAccess();
 
         $validated = $request->validate([
-            'schedule_id' => 'required',
-            'seat_id' => 'required'
+            'schedule_id' => 'required|exists:departure_schedules,id',
+            'seat_id' => 'required|exists:seats,id'
         ]);
 
-        // 🔥 VALIDASI BACKEND (ANTI DOUBLE BOOKING)
+        // ❌ CEK BOOKING AKTIF
+        $hasActiveBooking = Booking::where('user_id', Auth::id())
+            ->whereIn('status', ['pending', 'ongoing'])
+            ->exists();
+
+        if ($hasActiveBooking) {
+            return back()->withErrors('Masih ada booking aktif!');
+        }
+
+        // ❌ CEK DOUBLE SEAT
         $alreadyBooked = BookingSeat::where('seat_id', $validated['seat_id'])
             ->whereHas('booking', function ($q) use ($validated) {
                 $q->where('schedule_id', $validated['schedule_id']);
@@ -86,10 +96,23 @@ class BookingController extends Controller
             ]);
         }
 
-        // 🔥 default pickup
         $pickupType = $request->pickup_type ?? 'meeting_point';
 
-        // 🔥 simpan booking
+        // 🔥 AMBIL TARIF
+        $tariff = Tariff::first();
+
+        // ================= FIX HARGA =================
+        $price = 0;
+
+        if ($pickupType === 'pickup_location') {
+            // dari map
+            $price = $request->price_estimation ?? 0;
+        } else {
+            // 🔥 meeting point → kasih harga default
+            $price = $tariff->base_price ?? 50000;
+        }
+
+        // ================= SIMPAN BOOKING =================
         $booking = Booking::create([
             'user_id' => Auth::id(),
             'schedule_id' => $validated['schedule_id'],
@@ -98,24 +121,30 @@ class BookingController extends Controller
             'meeting_point_id' => $request->meeting_point_id ?? null,
             'pickup_maps' => $request->pickup_maps ?? null,
             'distance_km' => $request->distance_km ?? 0,
-            'price_estimation' => $request->price_estimation ?? 0,
+            'price_estimation' => $price,
             'status' => 'pending'
         ]);
 
-        // 🔥 simpan kursi
+        // ================= SIMPAN KURSI =================
         BookingSeat::create([
             'booking_id' => $booking->id,
             'seat_id' => $validated['seat_id']
         ]);
 
         return redirect()
-            ->route('booking.index')
+            ->route('booking.my')
             ->with('success', 'Booking berhasil!');
     }
 
+    // ================= BOOKING SAYA =================
     public function myBooking()
     {
-        $bookings = Booking::with(['schedule.origin', 'schedule.destination'])
+        $this->authorizeBookingAccess();
+
+        $bookings = Booking::with([
+            'schedule.origin',
+            'schedule.destination'
+        ])
             ->where('user_id', Auth::id())
             ->latest()
             ->get();

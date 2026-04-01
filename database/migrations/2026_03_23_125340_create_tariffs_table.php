@@ -9,8 +9,20 @@ return new class extends Migration {
     {
         Schema::create('tariffs', function (Blueprint $table) {
             $table->id();
-            $table->string('name'); // contoh: Tarif Default
-            $table->decimal('price_per_km', 10, 2);
+
+            // 🔥 Nama tarif
+            $table->string('name')->default('Tarif Default');
+
+            // 🔥 harga dasar (meeting point)
+            $table->decimal('base_price', 10, 2)->default(50000);
+
+            // 🔥 harga per km (GIS)
+            $table->decimal('price_per_km', 10, 2)->default(3000);
+
+            // 🔥 optional (future scaling)
+            $table->decimal('min_price', 10, 2)->nullable(); // minimal charge
+            $table->decimal('max_price', 10, 2)->nullable(); // batas maksimal
+
             $table->timestamps();
         });
     }
