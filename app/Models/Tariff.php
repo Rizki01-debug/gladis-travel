@@ -8,6 +8,10 @@ class Tariff extends Model
 {
     protected $fillable = [
         'name',
-        'price_per_km'
+        'base_price',
+        'price_per_km',
+        'pickup_fee',
+        'min_price',
+        'max_price'
     ];
 }

@@ -11,6 +11,8 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\DriverController;
 use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\ThemeController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\TariffController;
 
 /*
 |--------------------------------------------------------------------------
@@ -33,9 +35,15 @@ Route::middleware('auth')->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::prefix('dashboard')->group(function () {
-        Route::get('/super-admin', fn() => view('dashboard.super_admin'))->name('superadmin.dashboard');
-        Route::get('/admin', fn() => view('dashboard.admin'))->name('admin.dashboard');
-        Route::get('/driver', fn() => view('dashboard.driver'))->name('driver.dashboard');
+
+        Route::get('/super-admin', [DashboardController::class, 'superAdmin'])
+            ->name('superadmin.dashboard');
+
+        Route::get('/admin', [DashboardController::class, 'admin'])
+            ->name('admin.dashboard');
+
+        Route::get('/driver', [DashboardController::class, 'driver'])
+            ->name('driver.dashboard');
     });
 
     /*
@@ -63,13 +71,22 @@ Route::middleware('auth')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
+    | 🔥 TARIF (BARU)
+    |--------------------------------------------------------------------------
+    */
+    Route::resource('tariffs', TariffController::class);
+
+    /*
+    |--------------------------------------------------------------------------
     | BOOKING
     |--------------------------------------------------------------------------
     */
     Route::prefix('booking')->name('booking.')->group(function () {
+
         Route::get('/', [BookingController::class, 'index'])->name('index');
         Route::get('/create/{schedule}', [BookingController::class, 'create'])->name('create');
         Route::post('/store', [BookingController::class, 'store'])->name('store');
+
         Route::get('/my-booking', [BookingController::class, 'myBooking'])
             ->name('my');
     });
@@ -81,22 +98,20 @@ Route::middleware('auth')->group(function () {
     */
     Route::prefix('driver')->name('driver.')->group(function () {
 
-        // ✅ SPESIFIK DULU
+        // 🔥 SPESIFIK DULU (PENTING)
         Route::get('/trips', [DriverController::class, 'trips'])
             ->name('trip.index');
 
         Route::post('/trip/{id}/complete', [DriverController::class, 'complete'])
             ->name('trip.complete');
 
-        // ✅ BARU GENERAL
+        // 🔥 GENERAL
         Route::get('/', [DriverController::class, 'index'])->name('index');
         Route::get('/{id}', [DriverController::class, 'show'])->name('show');
 
         Route::post('/{id}/confirm', [DriverController::class, 'confirm'])->name('confirm');
         Route::post('/{id}/reject', [DriverController::class, 'reject'])->name('reject');
     });
-
-    Route::match(['GET', 'POST'], '/{id}/confirm', [DriverController::class, 'confirm']);
 
     /*
     |--------------------------------------------------------------------------
@@ -105,34 +120,27 @@ Route::middleware('auth')->group(function () {
     */
     Route::prefix('finance')->name('finance.')->group(function () {
 
-        // ================= DASHBOARD =================
-        Route::get('/', [FinanceController::class, 'index'])
-            ->name('index');
+        Route::get('/', [FinanceController::class, 'index'])->name('index');
 
-        // ================= EXPENSE =================
         Route::get('/expense/create', [FinanceController::class, 'createExpense'])
             ->name('expense.create');
 
         Route::post('/expense/store', [FinanceController::class, 'storeExpense'])
             ->name('expense.store');
 
-        // ================= REPORT =================
         Route::get('/report', [FinanceController::class, 'report'])
             ->name('report');
 
-        // ================= EXPORT PDF =================
         Route::get('/export-pdf', [FinanceController::class, 'exportPdf'])
             ->name('export.pdf');
 
-        // ================= SETORAN =================
         Route::get('/setoran', [FinanceController::class, 'setoran'])
             ->name('setoran');
 
-        // ================= KONFIRMASI SETORAN =================
         Route::post('/setoran/{id}/confirm', [FinanceController::class, 'confirmSetoran'])
             ->name('setoran.confirm');
-            
     });
+
     /*
     |--------------------------------------------------------------------------
     | SETTINGS
@@ -142,6 +150,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/theme/update', [ThemeController::class, 'update'])->name('theme.update');
 });
 
+/*
+|--------------------------------------------------------------------------
+| TEST (OPTIONAL)
+|--------------------------------------------------------------------------
+*/
 Route::get('/test-driver', function () {
     return route('driver.trip.index');
 });

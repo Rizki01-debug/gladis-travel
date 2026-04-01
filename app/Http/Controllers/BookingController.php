@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 use App\Models\Booking;
 use App\Models\BookingSeat;
@@ -48,12 +49,14 @@ class BookingController extends Controller
 
         $meetingPoints = MeetingPoint::where('city_id', $schedule->origin_city_id)->get();
 
-        // 🔥 kursi sudah dibooking
+        // 🔥 FIX: hanya kursi booking aktif
         $bookedSeats = BookingSeat::whereHas('booking', function ($q) use ($schedule) {
-            $q->where('schedule_id', $schedule->id);
+            $q->where('schedule_id', $schedule->id)
+                ->whereIn('status', ['pending', 'confirmed']);
         })->pluck('seat_id')->toArray();
 
-        $tariff = Tariff::first();
+        // 🔥 ambil tarif terbaru
+        $tariff = Tariff::latest()->first();
 
         return view('booking.create', compact(
             'schedule',
@@ -74,66 +77,91 @@ class BookingController extends Controller
             'seat_id' => 'required|exists:seats,id'
         ]);
 
-        // ❌ CEK BOOKING AKTIF
-        $hasActiveBooking = Booking::where('user_id', Auth::id())
-            ->whereIn('status', ['pending', 'ongoing'])
-            ->exists();
+        // 🔥 ambil tarif terbaru
+        $tariff = Tariff::latest()->first();
 
-        if ($hasActiveBooking) {
-            return back()->withErrors('Masih ada booking aktif!');
+        if (!$tariff) {
+            return back()->withErrors('Tarif belum tersedia!');
         }
 
-        // ❌ CEK DOUBLE SEAT
-        $alreadyBooked = BookingSeat::where('seat_id', $validated['seat_id'])
-            ->whereHas('booking', function ($q) use ($validated) {
-                $q->where('schedule_id', $validated['schedule_id']);
-            })
-            ->exists();
+        // 🔥 TRANSACTION (ANTI BUG)
+        return DB::transaction(function () use ($request, $validated, $tariff) {
 
-        if ($alreadyBooked) {
-            return back()->withErrors([
-                'seat_id' => 'Kursi sudah dibooking!'
+            // ❌ CEK BOOKING AKTIF
+            $hasActiveBooking = Booking::where('user_id', Auth::id())
+                ->whereIn('status', ['pending', 'confirmed'])
+                ->exists();
+
+            if ($hasActiveBooking) {
+                return back()->withErrors('Masih ada booking aktif!');
+            }
+
+            // ❌ CEK DOUBLE SEAT
+            $alreadyBooked = BookingSeat::where('seat_id', $validated['seat_id'])
+                ->whereHas('booking', function ($q) use ($validated) {
+                    $q->where('schedule_id', $validated['schedule_id'])
+                        ->whereIn('status', ['pending', 'confirmed']);
+                })
+                ->exists();
+
+            if ($alreadyBooked) {
+                return back()->withErrors([
+                    'seat_id' => 'Kursi sudah dibooking!'
+                ]);
+            }
+
+            $pickupType = $request->pickup_type ?? 'meeting_point';
+
+            // ================= HITUNG HARGA REAL =================
+
+            // 🔥 ambil jarak dari map
+            $distance = (float) ($request->distance_km ?? 0);
+
+            // 🔥 komponen harga
+            $basePrice = (float) $tariff->base_price;
+            $distancePrice = $distance * (float) $tariff->price_per_km;
+
+            // 🔥 pickup fee hanya jika dijemput
+            $pickupFee = ($pickupType === 'pickup_location')
+                ? (float) $tariff->pickup_fee
+                : 0;
+
+            // 🔥 total harga
+            $price = $basePrice + $distancePrice + $pickupFee;
+
+            // 🔥 MIN PRICE (optional)
+            if ($tariff->min_price && $price < $tariff->min_price) {
+                $price = $tariff->min_price;
+            }
+
+            // 🔥 MAX PRICE (optional)
+            if ($tariff->max_price && $price > $tariff->max_price) {
+                $price = $tariff->max_price;
+            }
+
+            // ================= SIMPAN BOOKING =================
+            $booking = Booking::create([
+                'user_id' => Auth::id(),
+                'schedule_id' => $validated['schedule_id'],
+                'departure_date' => now(),
+                'pickup_type' => $pickupType,
+                'meeting_point_id' => $request->meeting_point_id ?? null,
+                'pickup_maps' => $request->pickup_maps ?? null,
+                'distance_km' => $request->distance_km ?? 0,
+                'price_estimation' => $price,
+                'status' => 'pending'
             ]);
-        }
 
-        $pickupType = $request->pickup_type ?? 'meeting_point';
+            // ================= SIMPAN KURSI =================
+            BookingSeat::create([
+                'booking_id' => $booking->id,
+                'seat_id' => $validated['seat_id']
+            ]);
 
-        // 🔥 AMBIL TARIF
-        $tariff = Tariff::first();
-
-        // ================= FIX HARGA =================
-        $price = 0;
-
-        if ($pickupType === 'pickup_location') {
-            // dari map
-            $price = $request->price_estimation ?? 0;
-        } else {
-            // 🔥 meeting point → kasih harga default
-            $price = $tariff->base_price ?? 50000;
-        }
-
-        // ================= SIMPAN BOOKING =================
-        $booking = Booking::create([
-            'user_id' => Auth::id(),
-            'schedule_id' => $validated['schedule_id'],
-            'departure_date' => now(),
-            'pickup_type' => $pickupType,
-            'meeting_point_id' => $request->meeting_point_id ?? null,
-            'pickup_maps' => $request->pickup_maps ?? null,
-            'distance_km' => $request->distance_km ?? 0,
-            'price_estimation' => $price,
-            'status' => 'pending'
-        ]);
-
-        // ================= SIMPAN KURSI =================
-        BookingSeat::create([
-            'booking_id' => $booking->id,
-            'seat_id' => $validated['seat_id']
-        ]);
-
-        return redirect()
-            ->route('booking.my')
-            ->with('success', 'Booking berhasil!');
+            return redirect()
+                ->route('booking.my')
+                ->with('success', 'Booking berhasil!');
+        });
     }
 
     // ================= BOOKING SAYA =================

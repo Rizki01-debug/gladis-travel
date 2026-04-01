@@ -19,6 +19,7 @@ return new class extends Migration {
             // 🔥 harga per km (GIS)
             $table->decimal('price_per_km', 10, 2)->default(3000);
 
+            $table->decimal('pickup_fee', 10, 2)->default(5000);
             // 🔥 optional (future scaling)
             $table->decimal('min_price', 10, 2)->nullable(); // minimal charge
             $table->decimal('max_price', 10, 2)->nullable(); // batas maksimal
