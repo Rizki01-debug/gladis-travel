@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-    <h3>Booking Kursi</h3>
+    <h3 class="mb-3">🚐 Booking Kursi</h3>
 
     <form method="POST" action="{{ route('booking.store') }}">
         @csrf
@@ -53,83 +53,112 @@
             <input type="hidden" name="distance_km" id="distance_km">
             <input type="hidden" name="price_estimation" id="price_estimation">
 
-            <p class="mt-2">Jarak: <span id="distance_text">0</span> km</p>
-            <p>Estimasi Harga: Rp <span id="price_text">0</span></p>
+            <p class="mt-2">Jarak: <b><span id="distance_text">0</span> km</b></p>
+            <p>Estimasi Harga: <b>Rp <span id="price_text">0</span></b></p>
         </div>
 
         <button type="submit" class="btn btn-success mt-3">Booking</button>
     </form>
 @endsection
 
+
 @section('scripts')
     <script>
-        // 🔥 SAFE TARIF (ANTI ERROR)
+        // 🔥 TARIF (AMAN)
         var basePrice = {{ $tariff->base_price ?? 0 }};
         var tarif = {{ $tariff->price_per_km ?? 0 }};
         var pickupFee = {{ $tariff->pickup_fee ?? 0 }};
     </script>
 
     <script>
-        // ================= TOGGLE UI =================
-        const pickupType = document.getElementById('pickup_type');
-        const mapSection = document.getElementById('map_section');
-        const meetingSection = document.getElementById('meeting_point_section');
-
-        pickupType.addEventListener('change', function() {
-            let type = this.value;
-
-            if (type === 'pickup_location') {
-                mapSection.style.display = 'block';
-                meetingSection.style.display = 'none';
-
-                setTimeout(() => {
-                    map.invalidateSize();
-                }, 200);
-
-            } else {
-                mapSection.style.display = 'none';
-                meetingSection.style.display = 'block';
-            }
-        });
-
-        // ================= MAP =================
+        // ================= INIT MAP =================
         var map = L.map('map').setView([-6.9, 107.6], 10);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-        var routingControl = null;
-        var origin = L.latLng(-6.9, 107.6);
+        let routingControl = null;
 
-        map.on('click', function(e) {
+        // 🔥 TITIK
+        var meetingPoint = L.latLng(-6.9, 107.6); // nanti bisa dinamis
+        var destination = L.latLng(-6.2, 106.8); // nanti bisa dari schedule
 
-            var destination = L.latLng(e.latlng.lat, e.latlng.lng);
+        // ================= DRAW ROUTE =================
+        function drawRoute(userLocation = null) {
 
             if (routingControl !== null) {
                 map.removeControl(routingControl);
             }
 
+            let waypoints = [];
+
+            // 🔥 MEETING POINT ONLY
+            if (!userLocation) {
+                waypoints = [meetingPoint, destination];
+            }
+            // 🔥 PICKUP MODE
+            else {
+                waypoints = [meetingPoint, userLocation, destination];
+            }
+
             routingControl = L.Routing.control({
-                waypoints: [origin, destination],
+                waypoints: waypoints,
                 routeWhileDragging: false,
                 show: false
             }).addTo(map);
 
             routingControl.on('routesfound', function(e) {
 
-                var route = e.routes[0];
-                var distance = route.summary.totalDistance / 1000;
+                let route = e.routes[0];
+                let distance = route.summary.totalDistance / 1000;
 
                 document.getElementById('distance_km').value = distance.toFixed(2);
                 document.getElementById('distance_text').innerText = distance.toFixed(2);
 
-                var price = distance * tarif;
+                let price = basePrice + (distance * tarif);
+
+                if (userLocation) {
+                    price += pickupFee;
+                }
 
                 document.getElementById('price_estimation').value = Math.round(price);
                 document.getElementById('price_text').innerText = Math.round(price);
             });
+        }
+
+        // ================= TOGGLE =================
+        const pickupType = document.getElementById('pickup_type');
+        const mapSection = document.getElementById('map_section');
+        const meetingSection = document.getElementById('meeting_point_section');
+
+        pickupType.addEventListener('change', function() {
+
+            if (this.value === 'pickup_location') {
+                mapSection.style.display = 'block';
+                meetingSection.style.display = 'none';
+
+                setTimeout(() => map.invalidateSize(), 200);
+
+            } else {
+                mapSection.style.display = 'none';
+                meetingSection.style.display = 'block';
+
+                // 🔥 langsung tampil route meeting → tujuan
+                drawRoute(null);
+            }
+        });
+
+        // ================= CLICK MAP =================
+        map.on('click', function(e) {
+
+            let userLocation = L.latLng(e.latlng.lat, e.latlng.lng);
+
+            drawRoute(userLocation);
 
             document.getElementById('pickup_maps').value =
                 e.latlng.lat + ',' + e.latlng.lng;
         });
+
+        // 🔥 INIT DEFAULT ROUTE
+        drawRoute(null);
     </script>
 @endsection

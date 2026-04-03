@@ -1,35 +1,37 @@
 @php
+    use Illuminate\Support\Facades\Auth;
+
     /** @var \App\Models\User|null $user */
-    $user = auth()->user();
+    $user = Auth::user();
 @endphp
 
 @if ($user)
-    <div class="sidebar p-3">
+    <div class="sidebar p-3 text-white" style="background: {{ $theme }};">
 
-        <h4 class="mb-4">GLADIS</h4>
+        <h4 class="mb-4">🚐 GLADIS</h4>
 
         <ul class="nav flex-column">
 
             {{-- ================= DASHBOARD ================= --}}
-            <li class="nav-item mb-2">
+            <li class="nav-item mb-3">
                 @if ($user->isSuperAdmin())
                     <a href="{{ route('superadmin.dashboard') }}"
-                        class="nav-link text-white {{ request()->routeIs('superadmin.dashboard') ? 'active' : '' }}">
+                        class="nav-link text-white {{ request()->routeIs('superadmin.dashboard') ? 'active fw-bold' : '' }}">
                         🏠 Dashboard
                     </a>
                 @elseif ($user->isAdmin())
                     <a href="{{ route('admin.dashboard') }}"
-                        class="nav-link text-white {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
+                        class="nav-link text-white {{ request()->routeIs('admin.dashboard') ? 'active fw-bold' : '' }}">
                         🏠 Dashboard
                     </a>
                 @elseif ($user->isDriver())
                     <a href="{{ route('driver.index') }}"
-                        class="nav-link text-white {{ request()->routeIs('driver.*') ? 'active' : '' }}">
+                        class="nav-link text-white {{ request()->routeIs('driver.*') ? 'active fw-bold' : '' }}">
                         🏠 Dashboard
                     </a>
                 @elseif ($user->isPassenger())
                     <a href="{{ route('booking.index') }}"
-                        class="nav-link text-white {{ request()->routeIs('booking.*') ? 'active' : '' }}">
+                        class="nav-link text-white {{ request()->routeIs('booking.*') ? 'active fw-bold' : '' }}">
                         🏠 Dashboard
                     </a>
                 @endif
@@ -37,7 +39,7 @@
 
             {{-- ================= SUPER ADMIN ================= --}}
             @if ($user->isSuperAdmin())
-                <small class="text-white-50 mt-2">MASTER DATA</small>
+                <small class="text-white-50">MASTER DATA</small>
 
                 <li class="nav-item">
                     <a href="{{ route('vehicles.index') }}"
@@ -66,6 +68,14 @@
                         🗓 Schedules
                     </a>
                 </li>
+
+                {{-- 🔥 TARIF (PENTING BANGET) --}}
+                <li class="nav-item">
+                    <a href="{{ route('tariffs.index') }}"
+                        class="nav-link text-white {{ request()->routeIs('tariffs.*') ? 'active' : '' }}">
+                        💸 Tarif
+                    </a>
+                </li>
             @endif
 
             {{-- ================= FINANCE ================= --}}
@@ -75,7 +85,7 @@
                 <li class="nav-item">
                     <a href="{{ route('finance.index') }}"
                         class="nav-link text-white {{ request()->routeIs('finance.index') ? 'active' : '' }}">
-                        💰 Finance
+                        💰 Dashboard Keuangan
                     </a>
                 </li>
 
@@ -87,8 +97,9 @@
                 </li>
 
                 <li class="nav-item">
-                    <a href="{{ route('finance.setoran') }}" class="nav-link text-white">
-                        💰 Setoran Driver
+                    <a href="{{ route('finance.setoran') }}"
+                        class="nav-link text-white {{ request()->routeIs('finance.setoran') ? 'active' : '' }}">
+                        💳 Setoran Driver
                     </a>
                 </li>
             @endif
@@ -104,7 +115,6 @@
                     </a>
                 </li>
 
-                {{-- 🔥 TAMBAHAN --}}
                 <li class="nav-item">
                     <a href="{{ route('driver.trip.index') }}"
                         class="nav-link text-white {{ request()->routeIs('driver.trip.*') ? 'active' : '' }}">
@@ -119,13 +129,14 @@
 
                 <li class="nav-item">
                     <a href="{{ route('booking.index') }}"
-                        class="nav-link text-white {{ request()->routeIs('booking.*') ? 'active' : '' }}">
+                        class="nav-link text-white {{ request()->routeIs('booking.index') ? 'active' : '' }}">
                         🎫 Booking
                     </a>
                 </li>
 
                 <li class="nav-item">
-                    <a href="{{ route('booking.my') }}" class="nav-link text-white">
+                    <a href="{{ route('booking.my') }}"
+                        class="nav-link text-white {{ request()->routeIs('booking.my') ? 'active' : '' }}">
                         📋 Booking Saya
                     </a>
                 </li>
