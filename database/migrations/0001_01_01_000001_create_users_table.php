@@ -6,43 +6,41 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
 
             $table->id();
 
-            // relasi role
+            // 🔥 RELASI ROLE (AMAN)
             $table->foreignId('role_id')
+                ->default(4) // 🔥 auto passenger
                 ->constrained('roles')
-                ->onDelete('cascade');
+                ->restrictOnDelete();
 
             $table->string('name');
 
             $table->string('email')->unique();
 
-            // tambahan untuk GLADIS
+            // tambahan
             $table->string('phone')->nullable();
 
             $table->timestamp('email_verified_at')->nullable();
 
             $table->string('password');
 
-            // warna tema dashboard
+            // 🔥 tema UI
             $table->string('theme_color')->default('#0d6efd');
 
             $table->rememberToken();
 
             $table->timestamps();
+
+            // 🔥 OPTIMASI
+            $table->index('role_id');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('users');

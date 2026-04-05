@@ -18,10 +18,10 @@ class BookingController extends Controller
     // ================= AUTH =================
     private function authorizeBookingAccess()
     {
-        /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        if (!Auth::check() || !$user->isPassenger()) {
+        // 🔥 pakai role_id biar stabil
+        if (!$user || $user->role_id !== 4) {
             abort(403, 'Akses ditolak');
         }
     }
@@ -49,13 +49,11 @@ class BookingController extends Controller
 
         $meetingPoints = MeetingPoint::where('city_id', $schedule->origin_city_id)->get();
 
-        // 🔥 FIX: hanya kursi booking aktif
         $bookedSeats = BookingSeat::whereHas('booking', function ($q) use ($schedule) {
             $q->where('schedule_id', $schedule->id)
-                ->whereIn('status', ['pending', 'confirmed']);
+              ->whereIn('status', ['pending', 'confirmed']);
         })->pluck('seat_id')->toArray();
 
-        // 🔥 ambil tarif terbaru
         $tariff = Tariff::latest()->first();
 
         return view('booking.create', compact(
@@ -77,14 +75,14 @@ class BookingController extends Controller
             'seat_id' => 'required|exists:seats,id'
         ]);
 
-        // 🔥 ambil tarif terbaru
         $tariff = Tariff::latest()->first();
 
         if (!$tariff) {
-            return back()->withErrors('Tarif belum tersedia!');
+            return back()
+                ->withErrors('Tarif belum tersedia!')
+                ->withInput();
         }
 
-        // 🔥 TRANSACTION (ANTI BUG)
         return DB::transaction(function () use ($request, $validated, $tariff) {
 
             // ❌ CEK BOOKING AKTIF
@@ -93,53 +91,47 @@ class BookingController extends Controller
                 ->exists();
 
             if ($hasActiveBooking) {
-                return back()->withErrors('Masih ada booking aktif!');
+                return back()
+                    ->withErrors('Masih ada booking aktif!')
+                    ->withInput();
             }
 
             // ❌ CEK DOUBLE SEAT
             $alreadyBooked = BookingSeat::where('seat_id', $validated['seat_id'])
                 ->whereHas('booking', function ($q) use ($validated) {
                     $q->where('schedule_id', $validated['schedule_id'])
-                        ->whereIn('status', ['pending', 'confirmed']);
+                      ->whereIn('status', ['pending', 'confirmed']);
                 })
                 ->exists();
 
             if ($alreadyBooked) {
-                return back()->withErrors([
-                    'seat_id' => 'Kursi sudah dibooking!'
-                ]);
+                return back()
+                    ->withErrors(['seat_id' => 'Kursi sudah dibooking!'])
+                    ->withInput();
             }
 
+            // ================= HARGA =================
             $pickupType = $request->pickup_type ?? 'meeting_point';
 
-            // ================= HITUNG HARGA REAL =================
-
-            // 🔥 ambil jarak dari map
             $distance = (float) ($request->distance_km ?? 0);
-
-            // 🔥 komponen harga
             $basePrice = (float) $tariff->base_price;
             $distancePrice = $distance * (float) $tariff->price_per_km;
 
-            // 🔥 pickup fee hanya jika dijemput
             $pickupFee = ($pickupType === 'pickup_location')
                 ? (float) $tariff->pickup_fee
                 : 0;
 
-            // 🔥 total harga
             $price = $basePrice + $distancePrice + $pickupFee;
 
-            // 🔥 MIN PRICE (optional)
             if ($tariff->min_price && $price < $tariff->min_price) {
                 $price = $tariff->min_price;
             }
 
-            // 🔥 MAX PRICE (optional)
             if ($tariff->max_price && $price > $tariff->max_price) {
                 $price = $tariff->max_price;
             }
 
-            // ================= SIMPAN BOOKING =================
+            // ================= SIMPAN =================
             $booking = Booking::create([
                 'user_id' => Auth::id(),
                 'schedule_id' => $validated['schedule_id'],
@@ -147,16 +139,18 @@ class BookingController extends Controller
                 'pickup_type' => $pickupType,
                 'meeting_point_id' => $request->meeting_point_id ?? null,
                 'pickup_maps' => $request->pickup_maps ?? null,
-                'distance_km' => $request->distance_km ?? 0,
+                'distance_km' => $distance,
                 'price_estimation' => $price,
                 'status' => 'pending'
             ]);
 
-            // ================= SIMPAN KURSI =================
             BookingSeat::create([
                 'booking_id' => $booking->id,
                 'seat_id' => $validated['seat_id']
             ]);
+
+            // 🔥 ACTIVITY LOG
+            logActivity('Booking', 'User booking ID: ' . $booking->id);
 
             return redirect()
                 ->route('booking.my')

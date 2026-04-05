@@ -15,10 +15,10 @@ class FinanceController extends Controller
     // ================= AUTH =================
     private function authorizeFinance()
     {
-        /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        if (!$user || !($user->isAdmin() || $user->isSuperAdmin())) {
+        // 🔥 pakai role_id (lebih stabil)
+        if (!$user || !in_array($user->role_id, [1, 2])) {
             abort(403, 'Akses ditolak');
         }
     }
@@ -28,21 +28,17 @@ class FinanceController extends Controller
     {
         $this->authorizeFinance();
 
-        // ✅ TOTAL PEMASUKAN
         $income = Transaction::where('type', 'income')
             ->where('status', 'paid')
             ->sum('amount');
 
-        // ✅ TOTAL PENGELUARAN
         $expense = Expense::sum('amount');
 
-        // ✅ SALDO
         $balance = $income - $expense;
 
-        // ✅ LIST PENGELUARAN
         $expenses = Expense::latest()->get();
 
-        // ✅ DATA GRAFIK (PER HARI)
+        // 🔥 grafik
         $chartData = Transaction::select(
             DB::raw('DATE(created_at) as date'),
             DB::raw('SUM(amount) as total')
@@ -50,7 +46,7 @@ class FinanceController extends Controller
             ->where('type', 'income')
             ->where('status', 'paid')
             ->groupBy(DB::raw('DATE(created_at)'))
-            ->orderBy('date', 'asc')
+            ->orderBy('date')
             ->get();
 
         return view('finance.index', compact(
@@ -62,7 +58,7 @@ class FinanceController extends Controller
         ));
     }
 
-    // ================= FORM TAMBAH =================
+    // ================= CREATE =================
     public function createExpense()
     {
         $this->authorizeFinance();
@@ -70,7 +66,7 @@ class FinanceController extends Controller
         return view('finance.create_expense');
     }
 
-    // ================= SIMPAN =================
+    // ================= STORE =================
     public function storeExpense(Request $request)
     {
         $this->authorizeFinance();
@@ -83,7 +79,10 @@ class FinanceController extends Controller
             'description' => 'nullable|string'
         ]);
 
-        Expense::create($validated);
+        $expense = Expense::create($validated);
+
+        // 🔥 LOG
+        logActivity('Tambah Pengeluaran', 'ID: ' . $expense->id);
 
         return redirect()
             ->route('finance.index')
@@ -98,23 +97,25 @@ class FinanceController extends Controller
         $start = $request->start_date;
         $end = $request->end_date;
 
-        // ✅ DATA PEMASUKAN
+        // 🔥 VALIDASI RANGE
+        if ($start && $end && $start > $end) {
+            return back()->withErrors('Tanggal tidak valid');
+        }
+
         $transactions = Transaction::where('type', 'income')
             ->where('status', 'paid')
-            ->when($start && $end, function ($q) use ($start, $end) {
-                $q->whereBetween('created_at', [$start, $end]);
-            })
+            ->when($start && $end, fn($q) =>
+                $q->whereBetween('created_at', [$start, $end])
+            )
             ->latest()
             ->get();
 
-        // ✅ DATA PENGELUARAN
-        $expenses = Expense::when($start && $end, function ($q) use ($start, $end) {
-            $q->whereBetween('expense_date', [$start, $end]);
-        })
+        $expenses = Expense::when($start && $end, fn($q) =>
+            $q->whereBetween('expense_date', [$start, $end])
+        )
             ->latest()
             ->get();
 
-        // ✅ TOTAL
         $totalIncome = $transactions->sum('amount');
         $totalExpense = $expenses->sum('amount');
         $balance = $totalIncome - $totalExpense;
@@ -138,39 +139,38 @@ class FinanceController extends Controller
         $start = $request->start_date;
         $end = $request->end_date;
 
-        // ✅ TRANSACTIONS
         $transactions = Transaction::where('type', 'income')
             ->where('status', 'paid')
-            ->when($start && $end, function ($q) use ($start, $end) {
-                $q->whereBetween('created_at', [$start, $end]);
-            })
+            ->when($start && $end, fn($q) =>
+                $q->whereBetween('created_at', [$start, $end])
+            )
             ->get();
 
-        // ✅ EXPENSES
-        $expenses = Expense::when($start && $end, function ($q) use ($start, $end) {
-            $q->whereBetween('expense_date', [$start, $end]);
-        })->get();
+        $expenses = Expense::when($start && $end, fn($q) =>
+            $q->whereBetween('expense_date', [$start, $end])
+        )->get();
 
-        // ✅ TOTAL
         $totalIncome = $transactions->sum('amount');
         $totalExpense = $expenses->sum('amount');
         $balance = $totalIncome - $totalExpense;
 
-        // ✅ GENERATE PDF
-        $pdf = Pdf::loadView('finance.pdf', [
-            'transactions' => $transactions,
-            'expenses' => $expenses,
-            'totalIncome' => $totalIncome,
-            'totalExpense' => $totalExpense,
-            'balance' => $balance,
-            'start' => $start,
-            'end' => $end
-        ]);
+        // 🔥 LOG
+        logActivity('Export PDF', 'Periode: ' . ($start ?? '-') . ' s/d ' . ($end ?? '-'));
+
+        $pdf = Pdf::loadView('finance.pdf', compact(
+            'transactions',
+            'expenses',
+            'totalIncome',
+            'totalExpense',
+            'balance',
+            'start',
+            'end'
+        ));
 
         return $pdf->download('laporan-keuangan.pdf');
     }
 
-    // ================= LIST SETORAN =================
+    // ================= SETORAN =================
     public function setoran()
     {
         $this->authorizeFinance();
@@ -184,16 +184,24 @@ class FinanceController extends Controller
         return view('finance.setoran', compact('transactions'));
     }
 
-    // ================= KONFIRMASI SETORAN =================
+    // ================= CONFIRM SETORAN =================
     public function confirmSetoran($id)
     {
         $this->authorizeFinance();
 
         $transaction = Transaction::findOrFail($id);
 
+        // 🔥 anti double klik
+        if ($transaction->status === 'paid') {
+            return back()->withErrors('Sudah dikonfirmasi');
+        }
+
         $transaction->update([
             'status' => 'paid'
         ]);
+
+        // 🔥 LOG
+        logActivity('Konfirmasi Setoran', 'ID: ' . $transaction->id);
 
         return back()->with('success', 'Setoran berhasil dikonfirmasi!');
     }

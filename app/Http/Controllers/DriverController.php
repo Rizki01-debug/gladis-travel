@@ -11,15 +11,15 @@ class DriverController extends Controller
 {
     private function authorizeDriver()
     {
-        /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        if (!$user || !$user->isDriver()) {
-            abort(403);
+        // 🔥 pakai role_id
+        if (!$user || $user->role_id !== 3) {
+            abort(403, 'Akses ditolak');
         }
     }
 
-    // ================= LIST BOOKING (PENDING) =================
+    // ================= LIST BOOKING =================
     public function index()
     {
         $this->authorizeDriver();
@@ -43,34 +43,28 @@ class DriverController extends Controller
         return view('driver.show', compact('booking'));
     }
 
-    // ================= KONFIRMASI (AMBIL TRIP) =================
+    // ================= KONFIRMASI =================
     public function confirm($id)
     {
         $this->authorizeDriver();
 
         $booking = Booking::with('schedule')->findOrFail($id);
 
-        // ❌ sudah diproses
         if ($booking->status !== 'pending') {
             return back()->withErrors('Booking sudah diproses.');
         }
 
-        // ❌ schedule tidak valid
-        if (!$booking->schedule) {
-            return back()->withErrors('Schedule tidak ditemukan!');
+        if (!$booking->schedule || !$booking->schedule->vehicle_id) {
+            return back()->withErrors('Schedule atau kendaraan tidak valid!');
         }
 
-        if (!$booking->schedule->vehicle_id) {
-            return back()->withErrors('Vehicle belum di-set di schedule!');
-        }
-
-        // ✅ update booking → ongoing
+        // ✅ update booking
         $booking->update([
             'status' => 'ongoing'
         ]);
 
-        // ✅ buat trip
-        Trip::create([
+        // ✅ create trip
+        $trip = Trip::create([
             'booking_id' => $booking->id,
             'driver_id' => Auth::id(),
             'vehicle_id' => $booking->schedule->vehicle_id,
@@ -78,7 +72,11 @@ class DriverController extends Controller
             'start_time' => now()
         ]);
 
-        return redirect()->route('driver.trip.index')
+        // 🔥 LOG
+        logActivity('Driver Ambil Trip', 'Trip ID: ' . $trip->id);
+
+        return redirect()
+            ->route('driver.trip.index')
             ->with('success', 'Trip dimulai!');
     }
 
@@ -96,6 +94,9 @@ class DriverController extends Controller
         $booking->update([
             'status' => 'rejected'
         ]);
+
+        // 🔥 LOG
+        logActivity('Driver Tolak Booking', 'Booking ID: ' . $booking->id);
 
         return back()->with('success', 'Booking ditolak!');
     }
@@ -135,7 +136,7 @@ class DriverController extends Controller
             'status' => 'completed'
         ]);
 
-        // 🔥 AUTO INCOME (ANTI DOUBLE)
+        // 🔥 CEK DOUBLE INCOME
         $alreadyExists = Transaction::where('booking_id', $trip->booking->id)
             ->where('type', 'income')
             ->exists();
@@ -146,9 +147,12 @@ class DriverController extends Controller
                 'amount' => $trip->booking->price_estimation,
                 'type' => 'income',
                 'payment_method' => 'cash',
-                'status' => 'unpaid' // 🔥 penting
+                'status' => 'unpaid'
             ]);
         }
+
+        // 🔥 LOG
+        logActivity('Trip Selesai', 'Trip ID: ' . $trip->id);
 
         return back()->with('success', 'Trip selesai & pemasukan tercatat!');
     }

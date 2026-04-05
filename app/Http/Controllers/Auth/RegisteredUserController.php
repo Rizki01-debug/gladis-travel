@@ -32,20 +32,31 @@ class RegisteredUserController extends Controller
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
+        // 🔥 AUTO ROLE = PASSENGER (4)
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'role_id' => 4 // 🔥 WAJIB
         ]);
 
         event(new Registered($user));
 
         Auth::login($user);
 
-        return redirect(route('dashboard', absolute: false));
+        // 🔥 REDIRECT SESUAI ROLE
+        if ($user->role_id === 1) {
+            return redirect()->route('superadmin.dashboard');
+        } elseif ($user->role_id === 2) {
+            return redirect()->route('admin.dashboard');
+        } elseif ($user->role_id === 3) {
+            return redirect()->route('driver.dashboard');
+        } else {
+            return redirect()->route('booking.index'); // passenger
+        }
     }
 }
