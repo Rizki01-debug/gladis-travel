@@ -9,46 +9,61 @@ use Illuminate\Support\Facades\Auth;
 
 class MeetingPointController extends Controller
 {
-    private function authorizeAdmin()
+    // ================= AUTH =================
+    private function authorizeAccess()
     {
-        /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        if (!$user || !($user->isSuperAdmin() || $user->isAdmin())) {
+        // 🔥 role: super_admin & admin
+        if (!$user || !in_array($user->role_id, [1, 2])) {
             abort(403, 'Akses ditolak');
+        }
+
+        // 🔥 feature toggle
+        if (!featureActive('meeting_points')) {
+            abort(403, 'Fitur meeting point dinonaktifkan');
         }
     }
 
+    // ================= INDEX =================
     public function index()
     {
-        $this->authorizeAdmin();
+        $this->authorizeAccess();
 
-        $points = MeetingPoint::with('city')->get();
+        $points = MeetingPoint::with('city')
+            ->latest()
+            ->get();
 
         return view('meeting_points.index', compact('points'));
     }
 
+    // ================= CREATE =================
     public function create()
     {
-        $this->authorizeAdmin();
+        $this->authorizeAccess();
 
-        $cities = City::all();
+        $cities = City::latest()->get();
 
         return view('meeting_points.create', compact('cities'));
     }
 
+    // ================= STORE =================
     public function store(Request $request)
     {
-        $this->authorizeAdmin();
+        $this->authorizeAccess();
 
         $validated = $request->validate([
-            'city_id' => 'required',
+            'city_id' => 'required|exists:cities,id', // 🔥 FIX VALIDASI
             'name' => 'required|string|max:255'
         ]);
 
-        MeetingPoint::create($validated);
+        $point = MeetingPoint::create($validated);
 
-        return redirect()->route('meeting-points.index')
+        // 🔥 ACTIVITY LOG
+        logActivity('Meeting Point', 'Tambah titik: ' . $point->name);
+
+        return redirect()
+            ->route('meeting-points.index')
             ->with('success', 'Meeting point berhasil ditambahkan!');
     }
 }

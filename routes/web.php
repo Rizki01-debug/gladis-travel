@@ -178,9 +178,19 @@ Route::middleware('auth')->group(function () {
     Route::post('/theme/update', [ThemeController::class, 'update'])->name('theme.update');
 });
 
-Route::get('/activity-log', [ActivityLogController::class, 'index'])
-    ->middleware(['auth'])
-    ->name('activity.index');
+    /*
+    |--------------------------------------------------------------------------
+    | ACTIVITY LOG
+    |--------------------------------------------------------------------------
+    */
+Route::middleware(['auth', 'role:1', 'feature:activity_logs'])
+    ->prefix('activity')
+    ->name('activity.')
+    ->group(function () {
+
+        Route::get('/', [ActivityLogController::class, 'index'])
+            ->name('index');
+    });
 
 /*
 |--------------------------------------------------------------------------

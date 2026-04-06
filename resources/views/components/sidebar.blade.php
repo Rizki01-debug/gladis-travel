@@ -66,10 +66,13 @@
                     </li>
                 @endif
 
-                @if (featureActive('activity_log'))
+                {{-- 🔥 STEP 2 FEATURE CONTROL --}}
+                <small class="text-white-50 mt-3">ACTIVITY LOG</small>
+
+                @if (featureActive('activity_logs'))
                     <li class="nav-item">
                         <a href="{{ route('activity.index') }}"
-                            class="nav-link text-white {{ request()->routeIs('activity.*') ? 'active' : '' }}">
+                            class="nav-link text-white {{ request()->routeIs('activity.*') ? 'active fw-bold' : '' }}">
                             📜 Activity Log
                         </a>
                     </li>

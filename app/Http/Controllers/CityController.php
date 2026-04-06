@@ -8,41 +8,56 @@ use Illuminate\Support\Facades\Auth;
 
 class CityController extends Controller
 {
-    private function authorizeAdmin()
+    // ================= AUTH =================
+    private function authorizeAccess()
     {
-        /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        if (!$user || !($user->isSuperAdmin() || $user->isAdmin())) {
+        // 🔥 role: super_admin (1) & admin (2)
+        if (!$user || !in_array($user->role_id, [1, 2])) {
             abort(403, 'Akses ditolak');
         }
+
+        // 🔥 feature toggle
+        if (!featureActive('cities')) {
+            abort(403, 'Fitur kota dinonaktifkan');
+        }
     }
+
+    // ================= INDEX =================
     public function index()
     {
-        $this->authorizeAdmin();
+        $this->authorizeAccess();
 
-        $cities = City::all();
+        $cities = City::latest()->get();
+
         return view('cities.index', compact('cities'));
     }
 
+    // ================= CREATE =================
     public function create()
     {
-        $this->authorizeAdmin();
+        $this->authorizeAccess();
 
         return view('cities.create');
     }
 
+    // ================= STORE =================
     public function store(Request $request)
     {
-        $this->authorizeAdmin();
+        $this->authorizeAccess();
 
         $validated = $request->validate([
             'name' => 'required|string|max:255'
         ]);
 
-        City::create($validated);
+        $city = City::create($validated);
 
-        return redirect()->route('cities.index')
+        // 🔥 ACTIVITY LOG
+        logActivity('City', 'Tambah kota: ' . $city->name);
+
+        return redirect()
+            ->route('cities.index')
             ->with('success', 'Kota berhasil ditambahkan!');
     }
 }

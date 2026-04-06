@@ -16,7 +16,12 @@ return new class extends Migration
             $table->foreignId('city_id')->constrained()->onDelete('cascade');
             $table->string('name');
             $table->string('address')->nullable();
-            $table->string('google_maps_link')->nullable();
+
+            // 🔥 KOORDINAT WAJIB
+            $table->decimal('latitude', 10, 7);
+            $table->decimal('longitude', 10, 7);
+
+            $table->boolean('is_active')->default(true);
             $table->timestamps();
         });
     }

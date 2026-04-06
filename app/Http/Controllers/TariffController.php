@@ -8,20 +8,26 @@ use Illuminate\Support\Facades\Auth;
 
 class TariffController extends Controller
 {
-    // ================= PROTECT =================
-    private function authorizeAdmin()
+    // ================= AUTH =================
+    private function authorizeAccess()
     {
         $user = Auth::user();
 
+        // 🔥 role: super_admin & admin
         if (!$user || !in_array($user->role_id, [1, 2])) {
             abort(403, 'Akses ditolak');
+        }
+
+        // 🔥 feature toggle
+        if (!featureActive('tariffs')) {
+            abort(403, 'Fitur tarif dinonaktifkan');
         }
     }
 
     // ================= INDEX =================
     public function index()
     {
-        $this->authorizeAdmin();
+        $this->authorizeAccess();
 
         $tariffs = Tariff::latest()->get();
 
@@ -31,7 +37,7 @@ class TariffController extends Controller
     // ================= CREATE =================
     public function create()
     {
-        $this->authorizeAdmin();
+        $this->authorizeAccess();
 
         return view('tariffs.create');
     }
@@ -39,7 +45,7 @@ class TariffController extends Controller
     // ================= STORE =================
     public function store(Request $request)
     {
-        $this->authorizeAdmin();
+        $this->authorizeAccess();
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -50,19 +56,20 @@ class TariffController extends Controller
             'max_price' => 'nullable|numeric|min:0'
         ]);
 
-        // 🔥 VALIDASI CLEAN
-        if (!empty($validated['min_price']) && !empty($validated['max_price'])) {
-            if ($validated['min_price'] > $validated['max_price']) {
-                return back()
-                    ->withErrors(['min_price' => 'Min price tidak boleh lebih besar dari max price'])
-                    ->withInput();
-            }
+        // 🔥 VALIDASI AMAN
+        if (
+            isset($validated['min_price'], $validated['max_price']) &&
+            $validated['min_price'] > $validated['max_price']
+        ) {
+            return back()
+                ->withErrors(['min_price' => 'Min price tidak boleh lebih besar dari max price'])
+                ->withInput();
         }
 
         $tariff = Tariff::create($validated);
 
         // 🔥 ACTIVITY LOG
-        logActivity('Tambah Tarif', 'Menambahkan tarif: ' . $tariff->name);
+        logActivity('Tariff', 'Tambah tarif: ' . $tariff->name);
 
         return redirect()
             ->route('tariffs.index')
@@ -72,7 +79,7 @@ class TariffController extends Controller
     // ================= EDIT =================
     public function edit($id)
     {
-        $this->authorizeAdmin();
+        $this->authorizeAccess();
 
         $tariff = Tariff::findOrFail($id);
 
@@ -82,7 +89,7 @@ class TariffController extends Controller
     // ================= UPDATE =================
     public function update(Request $request, $id)
     {
-        $this->authorizeAdmin();
+        $this->authorizeAccess();
 
         $tariff = Tariff::findOrFail($id);
 
@@ -95,19 +102,20 @@ class TariffController extends Controller
             'max_price' => 'nullable|numeric|min:0'
         ]);
 
-        // 🔥 VALIDASI CLEAN
-        if (!empty($validated['min_price']) && !empty($validated['max_price'])) {
-            if ($validated['min_price'] > $validated['max_price']) {
-                return back()
-                    ->withErrors(['min_price' => 'Min price tidak boleh lebih besar dari max price'])
-                    ->withInput();
-            }
+        // 🔥 VALIDASI AMAN
+        if (
+            isset($validated['min_price'], $validated['max_price']) &&
+            $validated['min_price'] > $validated['max_price']
+        ) {
+            return back()
+                ->withErrors(['min_price' => 'Min price tidak boleh lebih besar dari max price'])
+                ->withInput();
         }
 
         $tariff->update($validated);
 
         // 🔥 ACTIVITY LOG
-        logActivity('Update Tarif', 'Update tarif ID: ' . $tariff->id);
+        logActivity('Tariff', 'Update tarif ID: ' . $tariff->id);
 
         return redirect()
             ->route('tariffs.index')
@@ -117,7 +125,7 @@ class TariffController extends Controller
     // ================= DELETE =================
     public function destroy($id)
     {
-        $this->authorizeAdmin();
+        $this->authorizeAccess();
 
         $tariff = Tariff::findOrFail($id);
 
@@ -126,7 +134,7 @@ class TariffController extends Controller
         $tariff->delete();
 
         // 🔥 ACTIVITY LOG
-        logActivity('Hapus Tarif', 'Menghapus tarif: ' . $name);
+        logActivity('Tariff', 'Hapus tarif: ' . $name);
 
         return back()->with('success', 'Tarif berhasil dihapus!');
     }

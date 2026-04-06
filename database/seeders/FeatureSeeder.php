@@ -21,7 +21,8 @@ class FeatureSeeder extends Seeder
                 'schedules',
                 'tariffs',
                 'finance',
-                'laporan'
+                'laporan',
+                'activity_logs'
             ],
 
             // ================= ADMIN =================

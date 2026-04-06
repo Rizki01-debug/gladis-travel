@@ -9,40 +9,44 @@ use Illuminate\Support\Facades\Auth;
 
 class VehicleController extends Controller
 {
-    public function index()
+    // ================= AUTH =================
+    private function authorizeAccess()
     {
-        /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        if (!Auth::check() || !$user->isSuperAdmin()) {
+        // 🔥 role: super_admin (1) & admin (2)
+        if (!$user || !in_array($user->role_id, [1, 2])) {
             abort(403, 'Akses ditolak');
         }
 
-        $vehicles = Vehicle::all();
+        // 🔥 feature toggle
+        if (!featureActive('vehicles')) {
+            abort(403, 'Fitur kendaraan dinonaktifkan');
+        }
+    }
+
+    // ================= INDEX =================
+    public function index()
+    {
+        $this->authorizeAccess();
+
+        $vehicles = Vehicle::latest()->get();
 
         return view('vehicles.index', compact('vehicles'));
     }
 
+    // ================= CREATE =================
     public function create()
     {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-
-        if (!Auth::check() || !$user->isSuperAdmin()) {
-            abort(403);
-        }
+        $this->authorizeAccess();
 
         return view('vehicles.create');
     }
 
+    // ================= STORE =================
     public function store(Request $request)
     {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
-
-        if (!Auth::check() || !$user->isSuperAdmin()) {
-            abort(403);
-        }
+        $this->authorizeAccess();
 
         // ✅ VALIDASI
         $validated = $request->validate([
@@ -66,6 +70,9 @@ class VehicleController extends Controller
                 'seat_number' => $i
             ]);
         }
+
+        // 🔥 ACTIVITY LOG
+        logActivity('Vehicle', 'Tambah kendaraan: ' . $vehicle->name);
 
         return redirect()
             ->route('vehicles.index')
