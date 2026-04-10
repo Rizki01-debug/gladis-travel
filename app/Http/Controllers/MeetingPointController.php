@@ -53,8 +53,11 @@ class MeetingPointController extends Controller
         $this->authorizeAccess();
 
         $validated = $request->validate([
-            'city_id' => 'required|exists:cities,id', // 🔥 FIX VALIDASI
-            'name' => 'required|string|max:255'
+            'city_id' => 'required|exists:cities,id',
+            'name' => 'required|string|max:255',
+            'address' => 'nullable|string',
+            'latitude' => 'required|numeric',
+            'longitude' => 'required|numeric'
         ]);
 
         $point = MeetingPoint::create($validated);

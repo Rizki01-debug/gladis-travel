@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\RoutePoint; // 🔥 WAJIB
 
 class DepartureSchedule extends Model
 {
@@ -31,5 +32,11 @@ class DepartureSchedule extends Model
     public function bookings()
     {
         return $this->hasMany(Booking::class, 'schedule_id');
+    }
+
+    public function routePoints()
+    {
+        return $this->hasMany(RoutePoint::class, 'schedule_id')
+                    ->orderBy('order');
     }
 }

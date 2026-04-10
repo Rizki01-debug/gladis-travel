@@ -10,7 +10,8 @@ class MeetingPoint extends Model
         'city_id',
         'name',
         'address',
-        'google_maps_link'
+        'latitude',   // 🔥 WAJIB
+        'longitude'   // 🔥 WAJIB
     ];
 
     public function city()

@@ -20,7 +20,6 @@ class BookingController extends Controller
     {
         $user = Auth::user();
 
-        // 🔥 pakai role_id biar stabil
         if (!$user || $user->role_id !== 4) {
             abort(403, 'Akses ditolak');
         }
@@ -31,9 +30,11 @@ class BookingController extends Controller
     {
         $this->authorizeBookingAccess();
 
-        $schedules = DepartureSchedule::with(['origin', 'destination', 'vehicle'])
-            ->latest()
-            ->get();
+        $schedules = DepartureSchedule::with([
+            'origin',
+            'destination',
+            'vehicle'
+        ])->latest()->get();
 
         return view('booking.index', compact('schedules'));
     }
@@ -47,11 +48,14 @@ class BookingController extends Controller
 
         $seats = Seat::where('vehicle_id', $schedule->vehicle_id)->get();
 
-        $meetingPoints = MeetingPoint::where('city_id', $schedule->origin_city_id)->get();
+        $meetingPoints = MeetingPoint::where('city_id', $schedule->origin_city_id)
+            ->select('id', 'name', 'latitude', 'longitude')
+            ->get();
 
+        // 🔥 kursi yang sudah diambil
         $bookedSeats = BookingSeat::whereHas('booking', function ($q) use ($schedule) {
             $q->where('schedule_id', $schedule->id)
-              ->whereIn('status', ['pending', 'confirmed']);
+                ->whereIn('status', ['pending', 'confirmed']);
         })->pluck('seat_id')->toArray();
 
         $tariff = Tariff::latest()->first();
@@ -78,82 +82,66 @@ class BookingController extends Controller
         $tariff = Tariff::latest()->first();
 
         if (!$tariff) {
-            return back()
-                ->withErrors('Tarif belum tersedia!')
-                ->withInput();
+            return back()->withErrors('Tarif belum tersedia!');
         }
 
         return DB::transaction(function () use ($request, $validated, $tariff) {
 
-            // ❌ CEK BOOKING AKTIF
-            $hasActiveBooking = Booking::where('user_id', Auth::id())
-                ->whereIn('status', ['pending', 'confirmed'])
-                ->exists();
-
-            if ($hasActiveBooking) {
-                return back()
-                    ->withErrors('Masih ada booking aktif!')
-                    ->withInput();
-            }
-
-            // ❌ CEK DOUBLE SEAT
+            // ================= CEK DOUBLE SEAT =================
             $alreadyBooked = BookingSeat::where('seat_id', $validated['seat_id'])
                 ->whereHas('booking', function ($q) use ($validated) {
                     $q->where('schedule_id', $validated['schedule_id'])
-                      ->whereIn('status', ['pending', 'confirmed']);
+                        ->whereIn('status', ['pending', 'confirmed']);
                 })
                 ->exists();
 
             if ($alreadyBooked) {
-                return back()
-                    ->withErrors(['seat_id' => 'Kursi sudah dibooking!'])
-                    ->withInput();
+                return back()->withErrors(['seat_id' => 'Kursi sudah dibooking!']);
             }
 
-            // ================= HARGA =================
+            // ================= AMBIL ROUTE =================
+            $schedule = DepartureSchedule::with('routePoints.meetingPoint')
+                ->findOrFail($validated['schedule_id']);
+
+            if ($schedule->routePoints->isEmpty()) {
+                return back()->withErrors('Rute belum diset!');
+            }
+
+            // ================= HITUNG JARAK =================
+            $distance = calculateRouteDistance($schedule->routePoints);
+
+            // ================= HITUNG HARGA =================
             $pickupType = $request->pickup_type ?? 'meeting_point';
 
-            $distance = (float) ($request->distance_km ?? 0);
-            $basePrice = (float) $tariff->base_price;
-            $distancePrice = $distance * (float) $tariff->price_per_km;
+            $price = (float) $tariff->base_price +
+                ($distance * (float) $tariff->price_per_km);
 
-            $pickupFee = ($pickupType === 'pickup_location')
-                ? (float) $tariff->pickup_fee
-                : 0;
-
-            $price = $basePrice + $distancePrice + $pickupFee;
-
-            if ($tariff->min_price && $price < $tariff->min_price) {
-                $price = $tariff->min_price;
+            if ($pickupType === 'pickup_location') {
+                $price += (float) $tariff->pickup_fee;
             }
 
-            if ($tariff->max_price && $price > $tariff->max_price) {
-                $price = $tariff->max_price;
-            }
-
-            // ================= SIMPAN =================
+            // ================= SIMPAN BOOKING =================
             $booking = Booking::create([
                 'user_id' => Auth::id(),
                 'schedule_id' => $validated['schedule_id'],
                 'departure_date' => now(),
                 'pickup_type' => $pickupType,
-                'meeting_point_id' => $request->meeting_point_id ?? null,
-                'pickup_maps' => $request->pickup_maps ?? null,
+                'meeting_point_id' => $request->meeting_point_id,
+                'pickup_maps' => $request->pickup_maps,
                 'distance_km' => $distance,
                 'price_estimation' => $price,
                 'status' => 'pending'
             ]);
 
+            // ================= SIMPAN SEAT =================
             BookingSeat::create([
                 'booking_id' => $booking->id,
                 'seat_id' => $validated['seat_id']
             ]);
 
-            // 🔥 ACTIVITY LOG
-            logActivity('Booking', 'User booking ID: ' . $booking->id);
+            logActivity('Booking', 'Booking ID: ' . $booking->id);
 
-            return redirect()
-                ->route('booking.my')
+            return redirect()->route('booking.my')
                 ->with('success', 'Booking berhasil!');
         });
     }
@@ -165,7 +153,8 @@ class BookingController extends Controller
 
         $bookings = Booking::with([
             'schedule.origin',
-            'schedule.destination'
+            'schedule.destination',
+            'seats'
         ])
             ->where('user_id', Auth::id())
             ->latest()

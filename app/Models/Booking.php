@@ -13,10 +13,12 @@ class Booking extends Model
         'pickup_type',
         'meeting_point_id',
         'pickup_maps',
-        'distance_km',        // 🔥 tambah ini
-        'price_estimation',   // 🔥 tambah ini
+        'distance_km',
+        'price_estimation',
         'status'
     ];
+
+    // ================= RELATION =================
 
     public function user()
     {
@@ -26,5 +28,11 @@ class Booking extends Model
     public function schedule()
     {
         return $this->belongsTo(DepartureSchedule::class, 'schedule_id');
+    }
+
+    // 🔥 INI YANG KAMU KURANGIN
+    public function seats()
+    {
+        return $this->belongsToMany(Seat::class, 'booking_seats');
     }
 }
