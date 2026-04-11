@@ -13,12 +13,10 @@ class CityController extends Controller
     {
         $user = Auth::user();
 
-        // 🔥 role: super_admin (1) & admin (2)
         if (!$user || !in_array($user->role_id, [1, 2])) {
             abort(403, 'Akses ditolak');
         }
 
-        // 🔥 feature toggle
         if (!featureActive('cities')) {
             abort(403, 'Fitur kota dinonaktifkan');
         }
@@ -47,10 +45,14 @@ class CityController extends Controller
     {
         $this->authorizeAccess();
 
+        // 🔥 VALIDASI FINAL (WAJIB UNTUK MAP)
         $validated = $request->validate([
-            'name' => 'required|string|max:255'
+            'name' => 'required|string|max:255',
+            'latitude' => 'required|numeric',
+            'longitude' => 'required|numeric',
         ]);
 
+        // 🔥 SIMPAN
         $city = City::create($validated);
 
         // 🔥 ACTIVITY LOG

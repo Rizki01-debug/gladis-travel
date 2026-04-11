@@ -20,19 +20,32 @@ class Booking extends Model
 
     // ================= RELATION =================
 
+    // 🔥 USER (yang booking)
     public function user()
     {
         return $this->belongsTo(User::class);
     }
 
+    // 🔥 SCHEDULE (jadwal perjalanan)
     public function schedule()
     {
         return $this->belongsTo(DepartureSchedule::class, 'schedule_id');
     }
 
-    // 🔥 INI YANG KAMU KURANGIN
+    // 🔥 MULTI SEAT (pivot booking_seats)
     public function seats()
     {
-        return $this->belongsToMany(Seat::class, 'booking_seats');
+        return $this->belongsToMany(
+            Seat::class,
+            'booking_seats',
+            'booking_id',
+            'seat_id'
+        )->withTimestamps(); // 🔥 biar future aman
+    }
+
+    // 🔥 MEETING POINT (kalau pilih meeting point)
+    public function meetingPoint()
+    {
+        return $this->belongsTo(MeetingPoint::class);
     }
 }

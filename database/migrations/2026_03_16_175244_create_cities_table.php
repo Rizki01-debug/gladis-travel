@@ -14,6 +14,14 @@ return new class extends Migration
         Schema::create('cities', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+
+            // 🔥 KOORDINAT WAJIB UNTUK MAP & ROUTE
+            $table->decimal('latitude', 10, 7)->nullable();
+            $table->decimal('longitude', 10, 7)->nullable();
+
+            // 🔥 OPSIONAL (tapi bagus untuk scaling nanti)
+            $table->boolean('is_active')->default(true);
+
             $table->timestamps();
         });
     }
