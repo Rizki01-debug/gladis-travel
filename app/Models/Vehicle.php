@@ -10,6 +10,19 @@ class Vehicle extends Model
         'name',
         'plate_number',
         'seat_capacity',
-        'status'
+        'status',
+        'driver_id' // 🔥 WAJIB TAMBAH
     ];
+
+    // ================= RELATION =================
+
+    public function driver()
+    {
+        return $this->belongsTo(User::class, 'driver_id');
+    }
+
+    public function schedules()
+    {
+        return $this->hasMany(DepartureSchedule::class);
+    }
 }

@@ -4,7 +4,7 @@
 
 <h3>Tambah Pengeluaran</h3>
 
-<form method="POST" action="{{ route('expense.store') }}">
+<form method="POST" action="{{ route('finance.expense.store') }}">
 @csrf
 
 <input type="text" name="title" class="form-control mb-2" placeholder="Judul" required>

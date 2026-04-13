@@ -13,6 +13,15 @@ return new class extends Migration
     {
         Schema::create('driver_earnings', function (Blueprint $table) {
             $table->id();
+
+            $table->foreignId('driver_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('booking_id')->constrained()->onDelete('cascade');
+
+            $table->decimal('amount', 12, 2);
+
+            // 🔥 status pembayaran ke admin
+            $table->enum('status', ['unpaid', 'paid'])->default('unpaid');
+
             $table->timestamps();
         });
     }

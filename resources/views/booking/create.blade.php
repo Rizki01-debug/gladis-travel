@@ -32,7 +32,7 @@
         <div id="meeting_point_section">
             <select name="meeting_point_id" class="form-control mb-3" id="meeting_point_id">
                 @foreach ($meetingPoints as $mp)
-                    <option value="{{ $mp->id }}">{{ $mp->name }}</option>
+                    <option value="{{ $mp['id'] }}">{{ $mp['name'] }}</option>
                 @endforeach
             </select>
         </div>
@@ -78,6 +78,30 @@
             const pickupFee = {{ $tariff->pickup_fee ?? 0 }};
 
             let map = L.map('map').setView(origin, 10);
+
+            // ================= MARKER MEETING POINT =================
+            let markers = [];
+
+            meetingPoints.forEach(point => {
+
+                let marker = L.marker([point.latitude, point.longitude])
+                    .addTo(map)
+                    .bindPopup(point.name);
+
+                // 🔥 SAAT DIKLIK
+                marker.on('click', function() {
+
+                    // set dropdown
+                    document.getElementById('meeting_point_id').value = point.id;
+
+                    // update route
+                    let start = L.latLng(point.latitude, point.longitude);
+                    drawRoute([start, destination]);
+
+                });
+
+                markers.push(marker);
+            });
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 

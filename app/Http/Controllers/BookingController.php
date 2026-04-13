@@ -10,17 +10,15 @@ use App\Models\Booking;
 use App\Models\BookingSeat;
 use App\Models\DepartureSchedule;
 use App\Models\Seat;
-use App\Models\MeetingPoint;
 use App\Models\Tariff;
+use App\Models\DriverEarning;
 
 class BookingController extends Controller
 {
     // ================= AUTH =================
     private function authorizeBookingAccess()
     {
-        $user = Auth::user();
-
-        if (!$user || $user->role_id !== 4) {
+        if (!Auth::check() || Auth::user()->role_id !== 4) {
             abort(403, 'Akses ditolak');
         }
     }
@@ -47,10 +45,11 @@ class BookingController extends Controller
         $schedule = DepartureSchedule::with([
             'vehicle',
             'origin',
-            'destination'
+            'destination',
+            'routePoints.meetingPoint' // 🔥 WAJIB
         ])->findOrFail($id);
 
-        // 🔥 VALIDASI DATA WAJIB
+        // ================= VALIDASI =================
         if (!$schedule->origin || !$schedule->destination) {
             abort(500, 'Origin / Destination belum diset!');
         }
@@ -64,41 +63,46 @@ class BookingController extends Controller
             abort(500, 'Koordinat kota belum diisi!');
         }
 
+        $tariff = Tariff::latest()->first();
+        if (!$tariff) {
+            abort(500, 'Tarif belum tersedia!');
+        }
+
+        // ================= DATA =================
         $seats = Seat::where('vehicle_id', $schedule->vehicle_id)->get();
 
-        $meetingPoints = MeetingPoint::where('city_id', $schedule->origin_city_id)
-            ->select('id', 'name', 'latitude', 'longitude')
-            ->get();
+        // 🔥 FIX UTAMA: AMBIL DARI ROUTE
+        $meetingPoints = $schedule->routePoints
+            ->pluck('meetingPoint')
+            ->filter()
+            ->map(function ($mp) {
+                return [
+                    'id' => $mp->id,
+                    'name' => $mp->name,
+                    'latitude' => (float) $mp->latitude,
+                    'longitude' => (float) $mp->longitude
+                ];
+            })
+            ->values();
 
         $bookedSeats = BookingSeat::whereHas('booking', function ($q) use ($schedule) {
             $q->where('schedule_id', $schedule->id)
                 ->whereIn('status', ['pending', 'confirmed']);
         })->pluck('seat_id')->toArray();
 
-        $tariff = Tariff::latest()->first();
+        return view('booking.create', [
+            'schedule' => $schedule,
+            'seats' => $seats,
+            'meetingPoints' => $meetingPoints,
+            'bookedSeats' => $bookedSeats,
+            'tariff' => $tariff,
 
-        if (!$tariff) {
-            abort(500, 'Tarif belum tersedia!');
-        }
-
-        // 🔥 KOORDINAT UNTUK MAP
-        $origin_lat = $schedule->origin->latitude;
-        $origin_lng = $schedule->origin->longitude;
-
-        $dest_lat = $schedule->destination->latitude;
-        $dest_lng = $schedule->destination->longitude;
-
-        return view('booking.create', compact(
-            'schedule',
-            'seats',
-            'meetingPoints',
-            'bookedSeats',
-            'tariff',
-            'origin_lat',
-            'origin_lng',
-            'dest_lat',
-            'dest_lng'
-        ));
+            // MAP
+            'origin_lat' => (float) $schedule->origin->latitude,
+            'origin_lng' => (float) $schedule->origin->longitude,
+            'dest_lat' => (float) $schedule->destination->latitude,
+            'dest_lng' => (float) $schedule->destination->longitude
+        ]);
     }
 
     // ================= SIMPAN BOOKING =================
@@ -113,13 +117,26 @@ class BookingController extends Controller
         ]);
 
         $tariff = Tariff::latest()->first();
-
         if (!$tariff) {
             return back()->withErrors('Tarif belum tersedia!');
         }
 
         try {
             return DB::transaction(function () use ($request, $validated, $tariff) {
+
+                // ================= SCHEDULE =================
+                $schedule = DepartureSchedule::with([
+                    'routePoints.meetingPoint',
+                    'vehicle'
+                ])->findOrFail($validated['schedule_id']);
+
+                if ($schedule->routePoints->isEmpty()) {
+                    throw new \Exception('Rute belum diset!');
+                }
+
+                if (!$schedule->vehicle) {
+                    throw new \Exception('Kendaraan belum diset!');
+                }
 
                 // ================= CEK DOUBLE SEAT =================
                 $conflict = BookingSeat::whereIn('seat_id', $validated['seat_id'])
@@ -133,34 +150,22 @@ class BookingController extends Controller
                     throw new \Exception('Ada kursi yang sudah dibooking!');
                 }
 
-                // ================= AMBIL SCHEDULE =================
-                $schedule = DepartureSchedule::with('routePoints.meetingPoint')
-                    ->findOrFail($validated['schedule_id']);
-
-                if ($schedule->routePoints->isEmpty()) {
-                    throw new \Exception('Rute belum diset!');
-                }
-
-                // ================= HITUNG JARAK =================
+                // ================= JARAK =================
                 $distance = calculateRouteDistance($schedule->routePoints);
 
                 if ($distance <= 0) {
                     throw new \Exception('Jarak tidak valid!');
                 }
 
-                // ================= HITUNG HARGA =================
+                // ================= HARGA =================
                 $pickupType = $request->pickup_type ?? 'meeting_point';
 
-                $basePrice = (float) $tariff->base_price;
-                $distancePrice = $distance * (float) $tariff->price_per_km;
+                $pricePerSeat =
+                    (float) $tariff->base_price +
+                    ($distance * (float) $tariff->price_per_km) +
+                    ($pickupType === 'pickup_location' ? (float) $tariff->pickup_fee : 0);
 
-                $pickupFee = ($pickupType === 'pickup_location')
-                    ? (float) $tariff->pickup_fee
-                    : 0;
-
-                $pricePerSeat = $basePrice + $distancePrice + $pickupFee;
-
-                // 🔥 MIN / MAX
+                // MIN MAX
                 if (!empty($tariff->min_price) && $pricePerSeat < $tariff->min_price) {
                     $pricePerSeat = $tariff->min_price;
                 }
@@ -169,11 +174,9 @@ class BookingController extends Controller
                     $pricePerSeat = $tariff->max_price;
                 }
 
-                // 🔥 TOTAL HARGA
-                $seatCount = count($validated['seat_id']);
-                $totalPrice = $pricePerSeat * $seatCount;
+                $totalPrice = $pricePerSeat * count($validated['seat_id']);
 
-                // ================= SIMPAN BOOKING =================
+                // ================= CREATE BOOKING =================
                 $booking = Booking::create([
                     'user_id' => Auth::id(),
                     'schedule_id' => $validated['schedule_id'],
@@ -186,21 +189,28 @@ class BookingController extends Controller
                     'status' => 'pending'
                 ]);
 
-                // ================= SIMPAN MULTI SEAT =================
-                $seatData = [];
-
-                foreach ($validated['seat_id'] as $seatId) {
-                    $seatData[] = [
+                // ================= MULTI SEAT =================
+                $seatData = collect($validated['seat_id'])->map(function ($seatId) use ($booking) {
+                    return [
                         'booking_id' => $booking->id,
                         'seat_id' => $seatId,
                         'created_at' => now(),
                         'updated_at' => now()
                     ];
-                }
+                })->toArray();
 
                 BookingSeat::insert($seatData);
 
-                // ================= LOG =================
+                // ================= DRIVER EARNING =================
+                if ($schedule->vehicle->driver_id) {
+                    DriverEarning::create([
+                        'driver_id' => $schedule->vehicle->driver_id,
+                        'booking_id' => $booking->id,
+                        'amount' => $totalPrice,
+                        'status' => 'unpaid'
+                    ]);
+                }
+
                 logActivity('Booking', 'Booking ID: ' . $booking->id);
 
                 return redirect()
@@ -208,7 +218,6 @@ class BookingController extends Controller
                     ->with('success', 'Booking berhasil!');
             });
         } catch (\Exception $e) {
-
             return back()
                 ->withErrors($e->getMessage())
                 ->withInput();

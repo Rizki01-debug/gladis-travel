@@ -38,6 +38,11 @@ class User extends Authenticatable
         return $this->belongsTo(Role::class);
     }
 
+    public function earnings()
+    {
+        return $this->hasMany(DriverEarning::class, 'driver_id');
+    }
+
     // 🔐 HELPER ROLE
     public function isSuperAdmin(): bool
     {

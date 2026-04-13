@@ -7,10 +7,11 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Booking;
 use App\Models\Trip;
 use App\Models\Transaction;
-use Illuminate\Support\Facades\DB;
+use App\Models\DriverEarning;
 
 class DashboardController extends Controller
 {
+    // ================= SUPER ADMIN =================
     public function superAdmin()
     {
         $totalBooking = Booking::count();
@@ -32,6 +33,7 @@ class DashboardController extends Controller
         ));
     }
 
+    // ================= ADMIN =================
     public function admin()
     {
         $income = Transaction::where('type', 'income')
@@ -44,14 +46,11 @@ class DashboardController extends Controller
 
         $totalTransaction = Transaction::count();
 
-        // 🔥 DATA GRAFIK (PER HARI)
-        $chartData = Transaction::select(
-            DB::raw('DATE(created_at) as date'),
-            DB::raw('SUM(amount) as total')
-        )
+        // 🔥 GRAFIK (PER HARI)
+        $chartData = Transaction::selectRaw('DATE(created_at) as date, SUM(amount) as total')
             ->where('type', 'income')
             ->where('status', 'paid')
-            ->groupBy(DB::raw('DATE(created_at)'))
+            ->groupBy('date')
             ->orderBy('date', 'asc')
             ->get();
 
@@ -63,19 +62,44 @@ class DashboardController extends Controller
         ));
     }
 
+    // ================= DRIVER =================
     public function driver()
     {
-        $userId = Auth::id();
+        $driverId = Auth::id();
 
-        $totalTrip = Trip::where('driver_id', $userId)->count();
+        // 🔥 VALIDASI (biar aman kalau belum login)
+        if (!$driverId) {
+            abort(403, 'Unauthorized');
+        }
 
-        $completedTrip = Trip::where('driver_id', $userId)
+        // ================= TRIP =================
+        $tripQuery = Trip::where('driver_id', $driverId);
+
+        $totalTrip = (clone $tripQuery)->count();
+
+        $completedTrip = (clone $tripQuery)
             ->where('trip_status', 'completed')
             ->count();
 
+        // ================= EARNINGS =================
+        $earningQuery = DriverEarning::where('driver_id', $driverId);
+
+        $totalEarning = (clone $earningQuery)->sum('amount');
+
+        $paidEarning = (clone $earningQuery)
+            ->where('status', 'paid')
+            ->sum('amount');
+
+        $unpaidEarning = (clone $earningQuery)
+            ->where('status', 'unpaid')
+            ->sum('amount');
+
         return view('dashboard.driver', compact(
             'totalTrip',
-            'completedTrip'
+            'completedTrip',
+            'totalEarning',
+            'paidEarning',
+            'unpaidEarning'
         ));
     }
 }

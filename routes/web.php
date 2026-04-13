@@ -113,23 +113,33 @@ Route::middleware('auth')->group(function () {
         });
 
     /*
-    |--------------------------------------------------------------------------
-    | DRIVER
-    |--------------------------------------------------------------------------
-    */
+|--------------------------------------------------------------------------
+| DRIVER
+|--------------------------------------------------------------------------
+*/
     Route::prefix('driver')
         ->middleware(['feature:driver'])
         ->name('driver.')
         ->group(function () {
 
-            Route::get('/trips', [DriverController::class, 'trips'])->name('trip.index');
+            // ================= BOOKING MASUK =================
+            Route::get('/', [DriverController::class, 'index'])->name('index');
+
+            // ================= TRIP =================
+            Route::get('/trips', [DriverController::class, 'trips'])->name('trips');
+
+            Route::post('/trip/{id}/start', [DriverController::class, 'start'])->name('trip.start');
             Route::post('/trip/{id}/complete', [DriverController::class, 'complete'])->name('trip.complete');
 
-            Route::get('/', [DriverController::class, 'index'])->name('index');
-            Route::get('/{id}', [DriverController::class, 'show'])->name('show');
+            // ================= EARNINGS =================
+            Route::get('/earnings', [DriverController::class, 'earnings'])->name('earnings');
 
+            // ================= ACTION BOOKING =================
             Route::post('/{id}/confirm', [DriverController::class, 'confirm'])->name('confirm');
             Route::post('/{id}/reject', [DriverController::class, 'reject'])->name('reject');
+
+            // ================= DETAIL (HARUS PALING BAWAH) =================
+            Route::get('/{id}', [DriverController::class, 'show'])->name('show');
         });
 
     /*
@@ -178,7 +188,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/theme/update', [ThemeController::class, 'update'])->name('theme.update');
 });
 
-    /*
+/*
     |--------------------------------------------------------------------------
     | ACTIVITY LOG
     |--------------------------------------------------------------------------

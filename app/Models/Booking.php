@@ -26,6 +26,11 @@ class Booking extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function trip()
+    {
+        return $this->hasOne(Trip::class);
+    }
+
     // 🔥 SCHEDULE (jadwal perjalanan)
     public function schedule()
     {
@@ -47,5 +52,10 @@ class Booking extends Model
     public function meetingPoint()
     {
         return $this->belongsTo(MeetingPoint::class);
+    }
+
+    public function driverEarning()
+    {
+        return $this->hasOne(DriverEarning::class);
     }
 }

@@ -1,25 +1,49 @@
 @extends('layouts.app')
 
 @section('content')
+    <h3>Dashboard Driver</h3>
 
-<h3>Dashboard Driver</h3>
+    <div class="row">
 
-<div class="row mt-3">
-
-    <div class="col-md-6">
-        <div class="card p-3">
-            <h6>Total Trip</h6>
-            <h3>{{ $totalTrip }}</h3>
+        {{-- TOTAL TRIP --}}
+        <div class="col-md-4 mb-3">
+            <div class="card p-3">
+                <b>Total Trip</b>
+                <h4>{{ $totalTrip }}</h4>
+            </div>
         </div>
-    </div>
 
-    <div class="col-md-6">
-        <div class="card p-3">
-            <h6>Trip Selesai</h6>
-            <h3>{{ $completedTrip }}</h3>
+        {{-- TRIP SELESAI --}}
+        <div class="col-md-4 mb-3">
+            <div class="card p-3">
+                <b>Trip Selesai</b>
+                <h4>{{ $completedTrip }}</h4>
+            </div>
         </div>
+
+        {{-- TOTAL EARNING --}}
+        <div class="col-md-4 mb-3">
+            <div class="card p-3">
+                <b>Total Earnings</b>
+                <h4 class="text-primary">Rp {{ number_format($totalEarning) }}</h4>
+            </div>
+        </div>
+
+        {{-- BELUM SETOR --}}
+        <div class="col-md-6 mb-3">
+            <div class="card p-3">
+                <b>Belum Disetor</b>
+                <h4 class="text-warning">Rp {{ number_format($unpaidEarning) }}</h4>
+            </div>
+        </div>
+
+        {{-- SUDAH SETOR --}}
+        <div class="col-md-6 mb-3">
+            <div class="card p-3">
+                <b>Sudah Disetor</b>
+                <h4 class="text-success">Rp {{ number_format($paidEarning) }}</h4>
+            </div>
+        </div>
+
     </div>
-
-</div>
-
 @endsection

@@ -30,7 +30,7 @@
                 @elseif ($user->isAdmin())
                     <a href="{{ route('admin.dashboard') }}" class="nav-link text-white">🏠 Dashboard</a>
                 @elseif ($user->isDriver())
-                    <a href="{{ route('driver.index') }}" class="nav-link text-white">🏠 Dashboard</a>
+                    <a href="{{ route('driver.dashboard') }}" class="nav-link text-white">🏠 Dashboard</a>
                 @elseif ($user->isPassenger())
                     <a href="{{ route('booking.index') }}" class="nav-link text-white">🏠 Dashboard</a>
                 @endif
@@ -142,17 +142,33 @@
 
                 <small class="text-white-50 mt-3">DRIVER</small>
 
+                {{-- BOOKING MASUK --}}
                 @if (featureActive('driver'))
                     <li class="nav-item">
-                        <a href="{{ route('driver.index') }}" class="nav-link text-white">📥 Booking Masuk</a>
+                        <a href="{{ route('driver.index') }}"
+                            class="nav-link text-white {{ request()->routeIs('driver.index') ? 'active bg-light text-dark' : '' }}">
+                            📥 Booking Masuk
+                        </a>
                     </li>
                 @endif
 
+                {{-- TRIP --}}
                 @if (featureActive('trip'))
                     <li class="nav-item">
-                        <a href="{{ route('driver.trip.index') }}" class="nav-link text-white">🚗 Trip Saya</a>
+                        <a href="{{ route('driver.trips') }}"
+                            class="nav-link text-white {{ request()->routeIs('driver.trips') ? 'active bg-light text-dark' : '' }}">
+                            🚗 Trip Saya
+                        </a>
                     </li>
                 @endif
+
+                {{-- EARNINGS 🔥 --}}
+                <li class="nav-item">
+                    <a href="{{ route('driver.earnings') }}"
+                        class="nav-link text-white {{ request()->routeIs('driver.earnings') ? 'active bg-light text-dark' : '' }}">
+                        💰 Earnings
+                    </a>
+                </li>
 
             @endif
 
