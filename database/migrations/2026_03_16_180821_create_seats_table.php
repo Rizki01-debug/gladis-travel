@@ -6,22 +6,33 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('seats', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('vehicle_id')->constrained()->onDelete('cascade');
-            $table->integer('seat_number');
+
+            // ================= RELATION =================
+            $table->foreignId('vehicle_id')
+                ->constrained()
+                ->cascadeOnDelete();
+
+            // ================= DATA =================
+            $table->unsignedInteger('seat_number');
+
+            // 🔥 FLEXIBLE (lebih baik dari hardcode)
+            $table->boolean('is_driver_seat')->default(false);
+
             $table->timestamps();
+
+            // ================= PROTECTION =================
+            // ❗ tidak boleh ada nomor kursi sama dalam 1 kendaraan
+            $table->unique(['vehicle_id', 'seat_number']);
+
+            // ================= PERFORMANCE =================
+            $table->index('vehicle_id');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('seats');

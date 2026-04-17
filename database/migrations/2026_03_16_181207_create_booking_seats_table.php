@@ -6,22 +6,32 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('booking_seats', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('booking_id')->constrained()->onDelete('cascade');
-            $table->foreignId('seat_id')->constrained()->onDelete('cascade');
+
+            // ================= RELATION =================
+            $table->foreignId('booking_id')
+                ->constrained()
+                ->cascadeOnDelete();
+
+            $table->foreignId('seat_id')
+                ->constrained()
+                ->cascadeOnDelete();
+
             $table->timestamps();
+
+            // ================= PROTECTION =================
+            // ❗ 1 kursi tidak boleh dipakai 2 booking aktif
+            $table->unique(['booking_id', 'seat_id']);
+
+            // ================= PERFORMANCE =================
+            $table->index('seat_id');
+            $table->index('booking_id');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('booking_seats');

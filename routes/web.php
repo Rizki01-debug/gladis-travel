@@ -21,7 +21,6 @@ use App\Http\Controllers\ActivityLogController;
 | PUBLIC
 |--------------------------------------------------------------------------
 */
-
 Route::get('/', fn() => view('welcome'));
 
 /*
@@ -33,7 +32,7 @@ Route::middleware('auth')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | DASHBOARD (ROLE ONLY ✅)
+    | DASHBOARD
     |--------------------------------------------------------------------------
     */
     Route::prefix('dashboard')->group(function () {
@@ -64,31 +63,22 @@ Route::middleware('auth')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | MASTER DATA (FEATURE BASED 🔥)
+    | MASTER DATA
     |--------------------------------------------------------------------------
     */
-    Route::resource('vehicles', VehicleController::class)
-        ->middleware(['feature:vehicles']);
-
-    Route::resource('cities', CityController::class)
-        ->middleware(['feature:cities']);
-
-    Route::resource('meeting-points', MeetingPointController::class)
-        ->middleware(['feature:meeting_points']);
-
-    Route::resource('schedules', DepartureScheduleController::class)
-        ->middleware(['feature:schedules']);
-
-    Route::resource('tariffs', TariffController::class)
-        ->middleware(['feature:tariffs']);
+    Route::resource('vehicles', VehicleController::class)->middleware('feature:vehicles');
+    Route::resource('cities', CityController::class)->middleware('feature:cities');
+    Route::resource('meeting-points', MeetingPointController::class)->middleware('feature:meeting_points');
+    Route::resource('schedules', DepartureScheduleController::class)->middleware('feature:schedules');
+    Route::resource('tariffs', TariffController::class)->middleware('feature:tariffs');
 
     /*
     |--------------------------------------------------------------------------
-    | FEATURE MANAGEMENT (SUPER ADMIN ONLY)
+    | FEATURE MANAGEMENT (SUPER ADMIN)
     |--------------------------------------------------------------------------
     */
     Route::prefix('features')
-        ->middleware(['role:1'])
+        ->middleware('role:1')
         ->name('features.')
         ->group(function () {
 
@@ -98,11 +88,11 @@ Route::middleware('auth')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | BOOKING (PASSENGER)
+    | BOOKING (🔥 FIX DI SINI)
     |--------------------------------------------------------------------------
     */
     Route::prefix('booking')
-        ->middleware(['feature:booking'])
+        ->middleware('feature:booking')
         ->name('booking.')
         ->group(function () {
 
@@ -110,41 +100,40 @@ Route::middleware('auth')->group(function () {
             Route::get('/create/{schedule}', [BookingController::class, 'create'])->name('create');
             Route::post('/store', [BookingController::class, 'store'])->name('store');
             Route::get('/my-booking', [BookingController::class, 'myBooking'])->name('my');
+
+            // 🔥 FIX: pakai DELETE (bukan POST)
+            Route::delete('/{id}/cancel', [BookingController::class, 'cancel'])
+                ->name('cancel');
         });
 
     /*
-|--------------------------------------------------------------------------
-| DRIVER
-|--------------------------------------------------------------------------
-*/
+    |--------------------------------------------------------------------------
+    | DRIVER
+    |--------------------------------------------------------------------------
+    */
     Route::prefix('driver')
-        ->middleware(['feature:driver'])
+        ->middleware('feature:driver')
         ->name('driver.')
         ->group(function () {
 
-            // ================= BOOKING MASUK =================
             Route::get('/', [DriverController::class, 'index'])->name('index');
-
-            // ================= TRIP =================
             Route::get('/trips', [DriverController::class, 'trips'])->name('trips');
 
             Route::post('/trip/{id}/start', [DriverController::class, 'start'])->name('trip.start');
             Route::post('/trip/{id}/complete', [DriverController::class, 'complete'])->name('trip.complete');
 
-            // ================= EARNINGS =================
             Route::get('/earnings', [DriverController::class, 'earnings'])->name('earnings');
 
-            // ================= ACTION BOOKING =================
             Route::post('/{id}/confirm', [DriverController::class, 'confirm'])->name('confirm');
             Route::post('/{id}/reject', [DriverController::class, 'reject'])->name('reject');
 
-            // ================= DETAIL (HARUS PALING BAWAH) =================
+            // 🔥 paling bawah (biar gak ketabrak)
             Route::get('/{id}', [DriverController::class, 'show'])->name('show');
         });
 
     /*
     |--------------------------------------------------------------------------
-    | FINANCE (FEATURE BASED 🔥)
+    | FINANCE
     |--------------------------------------------------------------------------
     */
     Route::prefix('finance')->name('finance.')->group(function () {
@@ -161,9 +150,20 @@ Route::middleware('auth')->group(function () {
             ->middleware('feature:finance')
             ->name('expense.store');
 
-        // 🔥 INI YANG KAMU BUTUH
+        Route::get('/expense/{id}/edit', [FinanceController::class, 'editExpense'])
+            ->middleware('feature:finance')
+            ->name('expense.edit');
+
+        Route::put('/expense/{id}/update', [FinanceController::class, 'updateExpense'])
+            ->middleware('feature:finance')
+            ->name('expense.update');
+
+        Route::delete('/expense/{id}/delete', [FinanceController::class, 'deleteExpense'])
+            ->middleware('feature:finance')
+            ->name('expense.delete');
+
         Route::get('/report', [FinanceController::class, 'report'])
-            ->middleware('feature:laporan') // 🔥 FIX DI SINI
+            ->middleware('feature:laporan')
             ->name('report');
 
         Route::get('/export-pdf', [FinanceController::class, 'exportPdf'])
@@ -189,17 +189,16 @@ Route::middleware('auth')->group(function () {
 });
 
 /*
-    |--------------------------------------------------------------------------
-    | ACTIVITY LOG
-    |--------------------------------------------------------------------------
-    */
+|--------------------------------------------------------------------------
+| ACTIVITY LOG
+|--------------------------------------------------------------------------
+*/
 Route::middleware(['auth', 'role:1', 'feature:activity_logs'])
     ->prefix('activity')
     ->name('activity.')
     ->group(function () {
 
-        Route::get('/', [ActivityLogController::class, 'index'])
-            ->name('index');
+        Route::get('/', [ActivityLogController::class, 'index'])->name('index');
     });
 
 /*
@@ -208,7 +207,7 @@ Route::middleware(['auth', 'role:1', 'feature:activity_logs'])
 |--------------------------------------------------------------------------
 */
 Route::get('/test-driver', function () {
-    return route('driver.trip.index');
+    return route('driver.index');
 });
 
 require __DIR__ . '/auth.php';

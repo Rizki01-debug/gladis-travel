@@ -3,29 +3,38 @@
 use App\Models\Feature;
 use App\Models\ActivityLog;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Collection;
 
 // ================= FEATURE =================
 if (!function_exists('featureActive')) {
-    function featureActive($name): bool
+    function featureActive(string $name): bool
     {
-        $user = Auth::user();
+        try {
+            $user = Auth::user();
 
-        if (!$user) return false;
+            if (!$user) return false;
 
-        $roleName = optional($user->role)->name;
+            $roleName = optional($user->role)->name;
 
-        if (!$roleName) return false;
+            if (!$roleName) return false;
 
-        return Feature::where('name', $name)
-            ->where('role', $roleName)
-            ->where('is_active', true)
-            ->exists();
+            return Feature::query()
+                ->where('name', $name)
+                ->where('role', $roleName)
+                ->where('is_active', true)
+                ->exists();
+
+        } catch (\Throwable $e) {
+            Log::error('featureActive Error: ' . $e->getMessage());
+            return false;
+        }
     }
 }
 
 // ================= LOG =================
 if (!function_exists('logActivity')) {
-    function logActivity($action, $desc = null): void
+    function logActivity(string $action, ?string $desc = null): void
     {
         try {
             ActivityLog::create([
@@ -34,16 +43,18 @@ if (!function_exists('logActivity')) {
                 'description' => $desc
             ]);
         } catch (\Throwable $e) {
-            logger()->error('ActivityLog Error: ' . $e->getMessage());
+            Log::error('ActivityLog Error: ' . $e->getMessage());
         }
     }
 }
 
 // ================= DISTANCE =================
 if (!function_exists('calculateDistance')) {
-    function calculateDistance($lat1, $lon1, $lat2, $lon2)
+    function calculateDistance($lat1, $lon1, $lat2, $lon2): float
     {
-        $earthRadius = 6371;
+        if (!$lat1 || !$lon1 || !$lat2 || !$lon2) return 0;
+
+        $earthRadius = 6371; // km
 
         $dLat = deg2rad($lat2 - $lat1);
         $dLon = deg2rad($lon2 - $lon1);
@@ -58,22 +69,33 @@ if (!function_exists('calculateDistance')) {
     }
 }
 
+// ================= ROUTE DISTANCE =================
 if (!function_exists('calculateRouteDistance')) {
-    function calculateRouteDistance($routePoints)
+    function calculateRouteDistance($routePoints): float
     {
+        if (!$routePoints) return 0;
+
+        // 🔥 HANDLE ARRAY / COLLECTION
+        if (!$routePoints instanceof Collection) {
+            $routePoints = collect($routePoints);
+        }
+
+        if ($routePoints->count() < 2) return 0;
+
+        $points = $routePoints->values();
         $total = 0;
 
-        for ($i = 0; $i < count($routePoints) - 1; $i++) {
+        for ($i = 0; $i < $points->count() - 1; $i++) {
 
-            $p1 = $routePoints[$i]->meetingPoint;
-            $p2 = $routePoints[$i + 1]->meetingPoint;
+            $p1 = optional($points[$i])->meetingPoint;
+            $p2 = optional($points[$i + 1])->meetingPoint;
 
-            if ($p1 && $p2) {
+            if ($p1 && $p2 && $p1->latitude && $p2->latitude) {
                 $total += calculateDistance(
-                    $p1->latitude,
-                    $p1->longitude,
-                    $p2->latitude,
-                    $p2->longitude
+                    (float) $p1->latitude,
+                    (float) $p1->longitude,
+                    (float) $p2->latitude,
+                    (float) $p2->longitude
                 );
             }
         }

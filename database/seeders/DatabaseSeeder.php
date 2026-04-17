@@ -10,6 +10,8 @@ use Database\Seeders\AdminSeeder;
 use Database\Seeders\DriverSeeder;
 use Database\Seeders\PassengerSeeder;
 use Database\Seeders\FeatureSeeder;
+use Database\Seeders\VehicleSeeder;
+use Database\Seeders\SeatSeeder;
 
 class DatabaseSeeder extends Seeder
 {
@@ -25,7 +27,9 @@ class DatabaseSeeder extends Seeder
             DriverSeeder::class,
             PassengerSeeder::class,
             TariffSeeder::class,
-            FeatureSeeder::class
+            FeatureSeeder::class,
+            VehicleSeeder::class,
+            SeatSeeder::class,
         ]);
     }
 }

@@ -6,31 +6,68 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('bookings', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('schedule_id')->constrained('departure_schedules');
+
+            // ================= RELATION =================
+            $table->foreignId('user_id')
+                ->constrained()
+                ->cascadeOnDelete();
+
+            $table->foreignId('schedule_id')
+                ->constrained('departure_schedules')
+                ->cascadeOnDelete();
+
+            $table->foreignId('meeting_point_id')
+                ->nullable()
+                ->constrained()
+                ->nullOnDelete();
+
+            // ================= DATA =================
+            // 🔥 USER YANG MENENTUKAN TANGGAL
             $table->date('departure_date');
-            $table->string('pickup_type');
-            $table->foreignId('meeting_point_id')->nullable()->constrained();
+
+            $table->enum('pickup_type', [
+                'meeting_point',
+                'pickup_location'
+            ]);
+
             $table->string('pickup_maps')->nullable();
-            $table->decimal('distance_km', 8, 2)->nullable();
-            $table->decimal('price_estimation', 10, 2)->nullable();
-            $table->decimal('pickup_fee', 10, 2)->default(0);
-            $table->string('status')->default('pending');
-            $table->string('cancel_reason')->nullable();
+
+            $table->string('phone', 15);
+
+            // ================= CALCULATION =================
+            $table->decimal('distance_km', 8, 2)->default(0);
+            $table->decimal('price_estimation', 12, 2)->default(0);
+
+            // ================= STATUS =================
+            $table->enum('status', [
+                'pending',
+                'confirmed',
+                'completed',
+                'cancelled'
+            ])->default('pending');
+
+            $table->text('cancel_reason')->nullable();
+
             $table->timestamps();
+
+            // ================= INDEX =================
+            $table->index(['user_id']);
+            $table->index(['schedule_id']);
+            $table->index(['departure_date']);
+
+            // ================= OPTIONAL PROTECTION =================
+            // ❗ Aktifkan nanti kalau sistem sudah stabil
+            // $table->unique(
+            //     ['schedule_id', 'departure_date', 'user_id'],
+            //     'unique_user_booking'
+            // );
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('bookings');

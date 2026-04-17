@@ -1,86 +1,163 @@
 @extends('layouts.app')
 
 @section('content')
-    <h3 class="mb-3">📋 Booking Masuk</h3>
+    <div class="container">
 
-    <div class="card shadow-sm p-3">
+        <h3 class="mb-4">📋 Booking Masuk</h3>
 
-        <div class="table-responsive">
-            <table class="table table-bordered align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th>ID</th>
-                        <th>Penumpang</th>
-                        <th>Rute</th>
-                        <th>Status</th>
-                        <th width="180">Aksi</th>
-                    </tr>
-                </thead>
+        {{-- ALERT --}}
+        @if (session('success'))
+            <div class="alert alert-success">
+                {{ session('success') }}
+            </div>
+        @endif
 
-                <tbody>
-                    @forelse ($bookings as $b)
-                        <tr>
-                            <td>#{{ $b->id }}</td>
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
 
-                            <td>{{ $b->user->name ?? '-' }}</td>
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle table-hover">
 
-                            <td>
-                                {{ $b->schedule->origin->name ?? '-' }} →
-                                {{ $b->schedule->destination->name ?? '-' }}
-                            </td>
+                        <thead class="table-light text-center">
+                            <tr>
+                                <th>ID</th>
+                                <th>Penumpang</th>
+                                <th>WA</th> {{-- 🔥 TAMBAH --}}
+                                <th>Rute</th>
+                                <th>Tanggal</th>
+                                <th>Kursi</th>
+                                <th>Status</th>
+                                <th width="200">Aksi</th>
+                            </tr>
+                        </thead>
 
-                            <td>
-                                @if ($b->status == 'pending')
-                                    <span class="badge bg-warning text-dark">Pending</span>
-                                @elseif ($b->status == 'confirmed')
-                                    <span class="badge bg-primary">Dikonfirmasi</span>
-                                @elseif ($b->status == 'completed')
-                                    <span class="badge bg-success">Selesai</span>
-                                @elseif ($b->status == 'rejected')
-                                    <span class="badge bg-danger">Ditolak</span>
-                                @endif
-                            </td>
+                        <tbody>
+                            @forelse ($bookings as $b)
+                                <tr>
 
-                            <td>
-                                <div class="d-flex gap-2">
+                                    {{-- ID --}}
+                                    <td class="text-center fw-bold">
+                                        #{{ $b->id }}
+                                    </td>
 
-                                    {{-- DETAIL --}}
-                                    <a href="{{ route('driver.show', $b->id) }}" class="btn btn-info btn-sm">
-                                        Detail
-                                    </a>
+                                    {{-- PENUMPANG --}}
+                                    <td>
+                                        {{ $b->user->name ?? '-' }}
+                                    </td>
 
-                                    {{-- OPTIONAL: AKSI CEPAT --}}
-                                    @if ($b->status == 'pending')
-                                    
-                                        <form action="{{ route('driver.confirm', $b->id) }}" method="POST">
-                                            @csrf
-                                            <button type="submit" class="btn btn-success btn-sm">
-                                                ✔
-                                            </button>
-                                        </form>
+                                    {{-- WA --}}
+                                    <td class="text-center">
+                                        @if ($b->phone)
+                                            <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $b->phone) }}"
+                                                target="_blank" class="btn btn-success btn-sm">
+                                                💬 WA
+                                            </a>
+                                        @else
+                                            <span class="text-muted">-</span>
+                                        @endif
+                                    </td>
 
-                                        <form action="{{ route('driver.reject', $b->id) }}" method="POST">
-                                            @csrf
-                                            <button type="submit" class="btn btn-danger btn-sm">
-                                                ✖
-                                            </button>
-                                        </form>
-                                    @endif
+                                    {{-- RUTE --}}
+                                    <td>
+                                        <b>{{ optional($b->schedule->origin)->name ?? '-' }}</b>
+                                        →
+                                        <b>{{ optional($b->schedule->destination)->name ?? '-' }}</b>
+                                    </td>
 
-                                </div>
-                            </td>
+                                    {{-- TANGGAL --}}
+                                    <td class="text-center">
+                                        {{ $b->formatted_date ?? '-' }}
+                                    </td>
 
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="5" class="text-center text-muted">
-                                Tidak ada booking
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                                    {{-- KURSI --}}
+                                    <td>
+                                        @forelse ($b->seats as $seat)
+                                            <span class="badge bg-primary">
+                                                {{ $seat->seat_number }}
+                                            </span>
+                                        @empty
+                                            <span class="text-muted">-</span>
+                                        @endforelse
+                                    </td>
+
+                                    {{-- STATUS --}}
+                                    <td class="text-center">
+                                        @switch($b->status)
+                                            @case('pending')
+                                                <span class="badge bg-warning text-dark">Menunggu</span>
+                                            @break
+
+                                            @case('confirmed')
+                                                <span class="badge bg-info">Dikonfirmasi</span>
+                                            @break
+
+                                            @case('completed')
+                                                <span class="badge bg-success">Selesai</span>
+                                            @break
+
+                                            @case('rejected')
+                                                <span class="badge bg-danger">Ditolak</span>
+                                            @break
+
+                                            @default
+                                                <span class="badge bg-secondary">{{ $b->status }}</span>
+                                        @endswitch
+                                    </td>
+
+                                    {{-- AKSI --}}
+                                    <td>
+                                        <div class="d-flex flex-wrap gap-1 justify-content-center">
+
+                                            {{-- DETAIL --}}
+                                            <a href="{{ route('driver.show', $b->id) }}" class="btn btn-info btn-sm">
+                                                Detail
+                                            </a>
+
+                                            {{-- AKSI CEPAT --}}
+                                            @if ($b->status == 'pending')
+                                                <form action="{{ route('driver.confirm', $b->id) }}" method="POST"
+                                                    onsubmit="return confirm('Konfirmasi booking ini?')">
+                                                    @csrf
+                                                    <button class="btn btn-success btn-sm">
+                                                        ✔
+                                                    </button>
+                                                </form>
+
+                                                <form action="{{ route('driver.reject', $b->id) }}" method="POST"
+                                                    onsubmit="return confirm('Tolak booking ini?')">
+                                                    @csrf
+                                                    <button class="btn btn-danger btn-sm">
+                                                        ✖
+                                                    </button>
+                                                </form>
+                                            @endif
+
+                                        </div>
+                                    </td>
+
+                                </tr>
+
+                                @empty
+                                    <tr>
+                                        <td colspan="8" class="text-center py-4">
+                                            <h5 class="text-muted">🚫 Tidak ada booking</h5>
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+
+                        </table>
+                    </div>
+
+                    {{-- PAGINATION --}}
+                    @if (method_exists($bookings, 'links'))
+                        <div class="mt-3">
+                            {{ $bookings->links() }}
+                        </div>
+                    @endif
+
+                </div>
+            </div>
+
         </div>
-
-    </div>
-@endsection
+    @endsection

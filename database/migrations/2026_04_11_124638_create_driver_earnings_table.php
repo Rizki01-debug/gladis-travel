@@ -6,29 +6,39 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('driver_earnings', function (Blueprint $table) {
             $table->id();
 
-            $table->foreignId('driver_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('booking_id')->constrained()->onDelete('cascade');
+            // ================= RELATION =================
+            $table->foreignId('driver_id')
+                ->constrained('users')
+                ->cascadeOnDelete();
 
+            $table->foreignId('booking_id')
+                ->constrained()
+                ->cascadeOnDelete();
+
+            // ================= DATA =================
             $table->decimal('amount', 12, 2);
 
-            // 🔥 status pembayaran ke admin
-            $table->enum('status', ['unpaid', 'paid'])->default('unpaid');
+            // ================= STATUS =================
+            $table->enum('status', ['unpaid', 'paid'])
+                ->default('unpaid');
 
             $table->timestamps();
+
+            // ================= PROTECTION =================
+            // ❗ 1 booking hanya boleh 1 earning
+            $table->unique('booking_id');
+
+            // ================= PERFORMANCE =================
+            $table->index('driver_id');
+            $table->index('status');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('driver_earnings');

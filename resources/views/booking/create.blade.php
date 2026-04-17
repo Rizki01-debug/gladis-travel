@@ -1,203 +1,276 @@
 @extends('layouts.app')
 
 @section('content')
-    <h3 class="mb-3">🚐 Booking Kursi</h3>
+    <div class="container">
 
-    <form method="POST" action="{{ route('booking.store') }}">
-        @csrf
+        <h3 class="mb-4">🚐 Booking Kursi</h3>
 
-        <input type="hidden" name="schedule_id" value="{{ $schedule->id }}">
+        {{-- ================= ERROR ================= --}}
+        @if ($errors->any())
+            <div class="alert alert-danger">
+                <b>Terjadi kesalahan:</b>
+                <ul class="mb-0">
+                    @foreach ($errors->all() as $err)
+                        <li>{{ $err }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
 
-        {{-- ================= KURSI ================= --}}
-        <h5>Pilih Kursi</h5>
-        <div class="mb-3">
-            @foreach ($seats as $seat)
-                @php $isBooked = in_array($seat->id, $bookedSeats); @endphp
+        <form method="POST" action="{{ route('booking.store') }}" onsubmit="return validateBooking()">
+            @csrf
 
-                <label class="btn m-1 {{ $isBooked ? 'btn-danger disabled' : 'btn-outline-primary' }}">
-                    <input type="checkbox" name="seat_id[]" value="{{ $seat->id }}" {{ $isBooked ? 'disabled' : '' }}>
-                    {{ $seat->seat_number }}
-                </label>
-            @endforeach
-        </div>
+            <input type="hidden" name="schedule_id" value="{{ $schedule->id }}">
 
-        {{-- ================= PICKUP ================= --}}
-        <h5>Pilih Jenis Pickup</h5>
-        <select name="pickup_type" class="form-control mb-3" id="pickup_type">
-            <option value="meeting_point">Meeting Point</option>
-            <option value="pickup_location">Dijemput (Map)</option>
-        </select>
+            {{-- ================= DATE ================= --}}
+            <div class="mb-3">
+                <label class="form-label">Tanggal Keberangkatan</label>
+                <input type="date" name="departure_date" class="form-control" value="{{ old('departure_date') }}"
+                    min="{{ now()->addDays(3)->format('Y-m-d') }}" required>
+                <small class="text-muted">Minimal H-3 dari hari ini</small>
+            </div>
 
-        {{-- ================= MEETING POINT ================= --}}
-        <div id="meeting_point_section">
-            <select name="meeting_point_id" class="form-control mb-3" id="meeting_point_id">
-                @foreach ($meetingPoints as $mp)
-                    <option value="{{ $mp['id'] }}">{{ $mp['name'] }}</option>
+            {{-- ================= PHONE ================= --}}
+            <div class="mb-3">
+                <label class="form-label">📱 Nomor WhatsApp</label>
+                <input type="text" name="phone" class="form-control" placeholder="Contoh: 628123456789"
+                    value="{{ old('phone') }}" required>
+            </div>
+
+            {{-- ================= SEAT ================= --}}
+            <h5>Pilih Kursi</h5>
+
+            {{-- 🔥 LEGEND --}}
+            <div class="mb-2">
+                <span class="badge bg-dark">Driver</span>
+                <span class="badge bg-danger">Terisi</span>
+                <span class="badge border text-dark">Tersedia</span>
+            </div>
+
+            <div class="mb-3">
+
+                @foreach ($seats as $seat)
+                    @php
+                        $isBooked = in_array($seat->id, $bookedSeats);
+                        $isDriver = (bool) $seat->is_driver_seat;
+                        $disabled = $isBooked || $isDriver;
+                    @endphp
+
+                    <label
+                        class="btn m-1
+            {{ $isDriver ? 'btn-dark text-white' : '' }}
+            {{ $isBooked ? 'btn-danger text-white' : '' }}
+            {{ !$disabled ? 'btn-outline-primary' : '' }}
+            {{ $disabled ? 'opacity-50 disabled-seat' : '' }}">
+
+                        <input type="checkbox" name="seat_id[]" value="{{ $seat->id }}" class="seat-checkbox"
+                            {{ $disabled ? 'disabled' : '' }}>
+
+                        {{ $seat->seat_number }}
+
+                        @if ($isDriver)
+                            <small>(Driver)</small>
+                        @endif
+                    </label>
                 @endforeach
-            </select>
-        </div>
 
-        {{-- ================= MAP ================= --}}
-        <div id="map_section">
-            <h5>Map Route</h5>
-            <div id="map" style="height:400px;"></div>
+            </div>
+            {{-- ================= PICKUP ================= --}}
+            <div class="mb-3">
+                <label class="form-label">Jenis Pickup</label>
+                <select name="pickup_type" class="form-control" id="pickup_type">
+                    <option value="meeting_point" {{ old('pickup_type') == 'meeting_point' ? 'selected' : '' }}>
+                        Meeting Point
+                    </option>
+                    <option value="pickup_location" {{ old('pickup_type') == 'pickup_location' ? 'selected' : '' }}>
+                        Dijemput (Map)
+                    </option>
+                </select>
+            </div>
 
-            <input type="hidden" name="pickup_maps" id="pickup_maps">
-            <input type="hidden" name="distance_km" id="distance_km">
-            <input type="hidden" name="price_estimation" id="price_estimation">
+            {{-- ================= MEETING POINT ================= --}}
+            <div id="meeting_point_section" class="mb-3">
+                <label class="form-label">Pilih Meeting Point</label>
+                <select name="meeting_point_id" class="form-control" id="meeting_point_id">
+                    @forelse ($meetingPoints as $mp)
+                        <option value="{{ $mp['id'] }}" {{ old('meeting_point_id') == $mp['id'] ? 'selected' : '' }}>
+                            {{ $mp['name'] }}
+                        </option>
+                    @empty
+                        <option value="">Belum ada meeting point</option>
+                    @endforelse
+                </select>
+            </div>
 
-            <p>Jarak: <b><span id="distance_text">0</span> KM</b></p>
-            <p>Harga: <b>Rp <span id="price_text">0</span></b></p>
-        </div>
+            {{-- ================= MAP ================= --}}
+            <div id="map_section" class="mb-3">
+                <h5>📍 Pilih Lokasi Penjemputan</h5>
+                <div id="map" style="height:400px;"></div>
 
-        <button class="btn btn-success mt-3">Booking</button>
-    </form>
+                <input type="hidden" name="pickup_maps" id="pickup_maps" value="{{ old('pickup_maps') }}">
+
+                <p class="mt-2">Jarak: <b><span id="distance_text">0</span> KM</b></p>
+                <p>Harga: <b>Rp <span id="price_text">0</span></b></p>
+            </div>
+
+            <button class="btn btn-success mt-4 w-100">
+                🚀 Booking Sekarang
+            </button>
+
+        </form>
+
+    </div>
 @endsection
 
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
 
-@push('styles')
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
-@endpush
+        const meetingPoints = @json($meetingPoints ?? []);
 
+        const origin = L.latLng({{ $origin_lat }}, {{ $origin_lng }});
+        const destination = L.latLng({{ $dest_lat }}, {{ $dest_lng }});
 
-@push('scripts')
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+        const basePrice = {{ $tariff->base_price ?? 0 }};
+        const tarif = {{ $tariff->price_per_km ?? 0 }};
+        const pickupFee = {{ $tariff->pickup_fee ?? 0 }};
 
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
+        const pickupType = document.getElementById('pickup_type');
+        const meetingSelect = document.getElementById('meeting_point_id');
+        const mapSection = document.getElementById('map_section');
+        const meetingSection = document.getElementById('meeting_point_section');
 
-            const meetingPoints = @json($meetingPoints);
+        // ================= MAP INIT =================
+        let map = L.map('map').setView(origin, 10);
 
-            const origin = L.latLng({{ $origin_lat }}, {{ $origin_lng }});
-            const destination = L.latLng({{ $dest_lat }}, {{ $dest_lng }});
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap'
+        }).addTo(map);
 
-            const basePrice = {{ $tariff->base_price ?? 0 }};
-            const tarif = {{ $tariff->price_per_km ?? 0 }};
-            const pickupFee = {{ $tariff->pickup_fee ?? 0 }};
+        let routingControl = null;
+        let markers = [];
 
-            let map = L.map('map').setView(origin, 10);
+        // ================= HELPER =================
+        function clearRoute() {
+            if (routingControl) {
+                map.removeControl(routingControl);
+                routingControl = null;
+            }
 
-            // ================= MARKER MEETING POINT =================
-            let markers = [];
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+        }
 
-            meetingPoints.forEach(point => {
+        function addMarker(latlng, text) {
+            let marker = L.marker(latlng).addTo(map).bindPopup(text);
+            markers.push(marker);
+        }
 
-                let marker = L.marker([point.latitude, point.longitude])
-                    .addTo(map)
-                    .bindPopup(point.name);
+        function formatRupiah(num) {
+            return new Intl.NumberFormat('id-ID').format(num);
+        }
 
-                // 🔥 SAAT DIKLIK
-                marker.on('click', function() {
+        function roundToThousand(num) {
+            return Math.ceil(num / 1000) * 1000;
+        }
 
-                    // set dropdown
-                    document.getElementById('meeting_point_id').value = point.id;
+        function getSelectedPoint() {
+            return meetingPoints.find(p => p.id == meetingSelect.value);
+        }
 
-                    // update route
-                    let start = L.latLng(point.latitude, point.longitude);
-                    drawRoute([start, destination]);
+        // ================= DRAW ROUTE =================
+        function drawRoute(latlngs, isPickup = false) {
 
-                });
+            if (!latlngs || latlngs.length < 2) return;
 
-                markers.push(marker);
+            clearRoute();
+
+            routingControl = L.Routing.control({
+                waypoints: latlngs,
+                routeWhileDragging: false,
+                show: false,
+                addWaypoints: false,
+                draggableWaypoints: false
+            }).addTo(map);
+
+            // MARKERS
+            latlngs.forEach((latlng, i) => {
+                if (i === 0) addMarker(latlng, "Start");
+                else if (i === latlngs.length - 1) addMarker(latlng, "Tujuan");
+                else addMarker(latlng, "Pickup");
             });
 
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+            routingControl.on('routesfound', function(e) {
 
-            let routingControl = null;
-            let markerGroup = L.layerGroup().addTo(map);
+                let distance = e.routes[0].summary.totalDistance / 1000;
 
-            const pickupType = document.getElementById('pickup_type');
-            const meetingSelect = document.getElementById('meeting_point_id');
+                document.getElementById('distance_text').innerText = distance.toFixed(2);
 
-            function clearMap() {
-                if (routingControl) {
-                    map.removeControl(routingControl);
-                    routingControl = null;
-                }
-                markerGroup.clearLayers();
-            }
+                let price = basePrice + (distance * tarif);
+                if (isPickup) price += pickupFee;
 
-            function drawMarkers(points) {
-                points.forEach(p => {
-                    L.marker(p).addTo(markerGroup);
-                });
-            }
+                let finalPrice = roundToThousand(price);
 
-            function drawRoute(latlngs, isPickup = false) {
+                document.getElementById('price_text').innerText = formatRupiah(finalPrice);
+            });
 
-                clearMap();
+            map.fitBounds(L.latLngBounds(latlngs));
+        }
 
-                drawMarkers(latlngs);
+        // ================= MEETING ROUTE =================
+        function updateMeetingRoute() {
+            let point = getSelectedPoint();
+            if (!point) return;
 
-                routingControl = L.Routing.control({
-                    waypoints: latlngs,
-                    routeWhileDragging: false,
-                    show: false,
-                    addWaypoints: false
-                }).addTo(map);
+            let start = L.latLng(point.latitude, point.longitude);
 
-                routingControl.on('routesfound', function(e) {
+            drawRoute([start, destination]);
+        }
 
-                    let distance = e.routes[0].summary.totalDistance / 1000;
-
-                    document.getElementById('distance_km').value = distance.toFixed(2);
-                    document.getElementById('distance_text').innerText = distance.toFixed(2);
-
-                    let price = basePrice + (distance * tarif);
-                    if (isPickup) price += pickupFee;
-
-                    document.getElementById('price_estimation').value = Math.round(price);
-                    document.getElementById('price_text').innerText = Math.round(price);
-                });
-
-                map.fitBounds(L.latLngBounds(latlngs));
-            }
-
-            function getSelectedPoint() {
-                return meetingPoints.find(p => p.id == meetingSelect.value);
-            }
-
-            function updateMeetingRoute() {
-                let point = getSelectedPoint();
-                if (!point) return;
-
-                let start = L.latLng(point.latitude, point.longitude);
-
-                drawRoute([start, destination]);
-            }
-
-            // INIT
+        // ================= INIT LOAD =================
+        setTimeout(() => {
             updateMeetingRoute();
+            map.invalidateSize();
+        }, 300);
 
-            meetingSelect.addEventListener('change', updateMeetingRoute);
+        // ================= EVENT =================
 
-            map.on('click', function(e) {
+        meetingSelect.addEventListener('change', updateMeetingRoute);
 
-                if (pickupType.value !== 'pickup_location') return;
+        map.on('click', function(e) {
 
-                let user = L.latLng(e.latlng.lat, e.latlng.lng);
+            if (pickupType.value !== 'pickup_location') return;
 
-                let point = getSelectedPoint();
-                if (!point) return;
+            let user = L.latLng(e.latlng.lat, e.latlng.lng);
+            let point = getSelectedPoint();
 
-                let start = L.latLng(point.latitude, point.longitude);
+            if (!point) {
+                alert('Pilih meeting point dulu!');
+                return;
+            }
 
-                drawRoute([start, user, destination], true);
+            let start = L.latLng(point.latitude, point.longitude);
 
-                document.getElementById('pickup_maps').value =
-                    e.latlng.lat + ',' + e.latlng.lng;
-            });
+            drawRoute([start, user, destination], true);
 
-            pickupType.addEventListener('change', function() {
-                updateMeetingRoute();
-
-                setTimeout(() => {
-                    map.invalidateSize();
-                }, 200);
-            });
-
+            document.getElementById('pickup_maps').value =
+                e.latlng.lat + ',' + e.latlng.lng;
         });
-    </script>
-@endpush
+
+        pickupType.addEventListener('change', function() {
+
+            const isMeeting = this.value === 'meeting_point';
+
+            meetingSection.style.display = isMeeting ? 'block' : 'none';
+            mapSection.style.display = 'block'; // 🔥 selalu tampil
+
+            clearRoute();
+
+            if (isMeeting) {
+                updateMeetingRoute();
+            }
+
+            setTimeout(() => map.invalidateSize(), 300);
+        });
+
+    });
+</script>

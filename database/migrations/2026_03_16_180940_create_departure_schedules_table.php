@@ -6,24 +6,48 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('departure_schedules', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('vehicle_id')->constrained()->onDelete('cascade');
-            $table->foreignId('origin_city_id')->constrained('cities');
-            $table->foreignId('destination_city_id')->constrained('cities');
+
+            // ================= RELATION =================
+            $table->foreignId('vehicle_id')
+                ->constrained()
+                ->cascadeOnDelete();
+
+            $table->foreignId('origin_city_id')
+                ->constrained('cities')
+                ->cascadeOnDelete();
+
+            $table->foreignId('destination_city_id')
+                ->constrained('cities')
+                ->cascadeOnDelete();
+
+            // ================= TIME =================
+            // 🔥 HANYA JAM (SESUAI ARSITEKTUR FLEXIBLE)
             $table->time('departure_time');
+
+            // ================= STATUS =================
+            $table->enum('status', ['active', 'inactive'])
+                ->default('active');
+
             $table->timestamps();
+
+            // ================= INDEX =================
+            $table->index(['vehicle_id']);
+            $table->index(['origin_city_id']);
+            $table->index(['destination_city_id']);
+
+            // ================= OPTIONAL UNIQUE =================
+            // Aktifkan kalau sistem sudah stabil
+            // $table->unique(
+            //     ['vehicle_id', 'origin_city_id', 'destination_city_id', 'departure_time'],
+            //     'unique_schedule'
+            // );
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('departure_schedules');

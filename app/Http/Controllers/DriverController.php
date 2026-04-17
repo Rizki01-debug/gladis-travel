@@ -6,9 +6,11 @@ use App\Models\Booking;
 use App\Models\Trip;
 use App\Models\DriverEarning;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class DriverController extends Controller
 {
+    // ================= AUTH =================
     private function authorizeDriver()
     {
         if (!Auth::check() || Auth::user()->role_id !== 3) {
@@ -21,7 +23,12 @@ class DriverController extends Controller
     {
         $this->authorizeDriver();
 
-        $bookings = Booking::with(['user', 'schedule.vehicle'])
+        $bookings = Booking::with([
+            'user',
+            'schedule.vehicle',
+            'schedule.origin',
+            'schedule.destination'
+        ])
             ->where('status', 'pending')
             ->latest()
             ->get();
@@ -34,8 +41,13 @@ class DriverController extends Controller
     {
         $this->authorizeDriver();
 
-        $booking = Booking::with(['user', 'schedule.vehicle'])
-            ->findOrFail($id);
+        $booking = Booking::with([
+            'user',
+            'schedule.vehicle',
+            'schedule.origin',
+            'schedule.destination',
+            'seats'
+        ])->findOrFail($id);
 
         return view('driver.show', compact('booking'));
     }
@@ -45,34 +57,48 @@ class DriverController extends Controller
     {
         $this->authorizeDriver();
 
-        $booking = Booking::with('schedule.vehicle')->findOrFail($id);
+        try {
+            return DB::transaction(function () use ($id) {
 
-        if ($booking->status !== 'pending') {
-            return back()->withErrors('Booking sudah diproses.');
+                $booking = Booking::lockForUpdate()
+                    ->with('schedule.vehicle')
+                    ->findOrFail($id);
+
+                if ($booking->status !== 'pending') {
+                    throw new \Exception('Booking sudah diproses.');
+                }
+
+                if (!$booking->schedule || !$booking->schedule->vehicle_id) {
+                    throw new \Exception('Schedule / kendaraan tidak valid!');
+                }
+
+                // ❗ CEK SUDAH ADA TRIP
+                if (Trip::where('booking_id', $booking->id)->exists()) {
+                    throw new \Exception('Trip sudah dibuat!');
+                }
+
+                // ✅ UPDATE BOOKING
+                $booking->update([
+                    'status' => 'confirmed'
+                ]);
+
+                // ✅ CREATE TRIP
+                $trip = Trip::create([
+                    'booking_id' => $booking->id,
+                    'driver_id' => Auth::id(),
+                    'vehicle_id' => $booking->schedule->vehicle_id,
+                    'trip_status' => 'waiting'
+                ]);
+
+                logActivity('Driver Terima Booking', 'Trip ID: ' . $trip->id);
+
+                return redirect()
+                    ->route('driver.trips')
+                    ->with('success', 'Booking diterima!');
+            });
+        } catch (\Exception $e) {
+            return back()->withErrors($e->getMessage());
         }
-
-        if (!$booking->schedule || !$booking->schedule->vehicle_id) {
-            return back()->withErrors('Schedule / kendaraan tidak valid!');
-        }
-
-        // ✅ update booking
-        $booking->update([
-            'status' => 'confirmed'
-        ]);
-
-        // ✅ buat trip (BELUM MULAI)
-        $trip = Trip::create([
-            'booking_id' => $booking->id,
-            'driver_id' => Auth::id(),
-            'vehicle_id' => $booking->schedule->vehicle_id,
-            'trip_status' => 'waiting'
-        ]);
-
-        logActivity('Driver Terima Booking', 'Trip ID: ' . $trip->id);
-
-        return redirect()
-            ->route('driver.trips')
-            ->with('success', 'Booking diterima!');
     }
 
     // ================= TOLAK =================
@@ -87,7 +113,7 @@ class DriverController extends Controller
         }
 
         $booking->update([
-            'status' => 'rejected'
+            'status' => 'cancelled'
         ]);
 
         logActivity('Driver Tolak Booking', 'Booking ID: ' . $booking->id);
@@ -100,7 +126,11 @@ class DriverController extends Controller
     {
         $this->authorizeDriver();
 
-        $trips = Trip::with(['booking.user', 'vehicle'])
+        $trips = Trip::with([
+            'booking.user',
+            'booking.schedule.origin',
+            'booking.schedule.destination'
+        ])
             ->where('driver_id', Auth::id())
             ->latest()
             ->get();
@@ -113,18 +143,29 @@ class DriverController extends Controller
     {
         $this->authorizeDriver();
 
-        $trip = Trip::where('driver_id', Auth::id())->findOrFail($id);
+        try {
+            return DB::transaction(function () use ($id) {
 
-        if ($trip->trip_status !== 'waiting') {
-            return back()->withErrors('Trip tidak bisa dimulai.');
+                $trip = Trip::where('driver_id', Auth::id())
+                    ->lockForUpdate()
+                    ->findOrFail($id);
+
+                if ($trip->trip_status !== 'waiting') {
+                    throw new \Exception('Trip tidak bisa dimulai.');
+                }
+
+                $trip->update([
+                    'trip_status' => 'ongoing',
+                    'start_time' => now()
+                ]);
+
+                logActivity('Trip Mulai', 'Trip ID: ' . $trip->id);
+
+                return back()->with('success', 'Perjalanan dimulai!');
+            });
+        } catch (\Exception $e) {
+            return back()->withErrors($e->getMessage());
         }
-
-        $trip->update([
-            'trip_status' => 'ongoing',
-            'start_time' => now()
-        ]);
-
-        return back()->with('success', 'Perjalanan dimulai!');
     }
 
     // ================= SELESAI TRIP =================
@@ -132,36 +173,46 @@ class DriverController extends Controller
     {
         $this->authorizeDriver();
 
-        $trip = Trip::with('booking')->where('driver_id', Auth::id())->findOrFail($id);
+        try {
+            return DB::transaction(function () use ($id) {
 
-        if ($trip->trip_status !== 'ongoing') {
-            return back()->withErrors('Trip belum dimulai.');
+                $trip = Trip::with('booking')
+                    ->where('driver_id', Auth::id())
+                    ->lockForUpdate()
+                    ->findOrFail($id);
+
+                if ($trip->trip_status !== 'ongoing') {
+                    throw new \Exception('Trip belum dimulai.');
+                }
+
+                // ✅ UPDATE TRIP
+                $trip->update([
+                    'trip_status' => 'completed',
+                    'end_time' => now()
+                ]);
+
+                // ✅ UPDATE BOOKING
+                $trip->booking->update([
+                    'status' => 'completed'
+                ]);
+
+                // ✅ DRIVER EARNING (ANTI DUPLICATE)
+                DriverEarning::firstOrCreate(
+                    ['booking_id' => $trip->booking_id],
+                    [
+                        'driver_id' => $trip->driver_id,
+                        'amount' => $trip->booking->price_estimation,
+                        'status' => 'unpaid'
+                    ]
+                );
+
+                logActivity('Trip Selesai', 'Trip ID: ' . $trip->id);
+
+                return back()->with('success', 'Trip selesai & pemasukan tercatat!');
+            });
+        } catch (\Exception $e) {
+            return back()->withErrors($e->getMessage());
         }
-
-        // ✅ update trip
-        $trip->update([
-            'trip_status' => 'completed',
-            'end_time' => now()
-        ]);
-
-        // ✅ update booking
-        $trip->booking->update([
-            'status' => 'completed'
-        ]);
-
-        // ✅ DRIVER EARNING (FINAL FIX)
-        DriverEarning::firstOrCreate(
-            ['booking_id' => $trip->booking_id],
-            [
-                'driver_id' => $trip->driver_id,
-                'amount' => $trip->booking->price_estimation,
-                'status' => 'unpaid'
-            ]
-        );
-
-        logActivity('Trip Selesai', 'Trip ID: ' . $trip->id);
-
-        return back()->with('success', 'Trip selesai & pemasukan tercatat!');
     }
 
     // ================= DRIVER EARNINGS =================
@@ -171,16 +222,13 @@ class DriverController extends Controller
 
         $driverId = Auth::id();
 
-        // 🔥 BASE QUERY
         $query = DriverEarning::where('driver_id', $driverId);
 
-        // 🔥 DATA LIST
         $earnings = (clone $query)
-            ->with('booking') // optional biar bisa tampil detail
+            ->with(['booking.user'])
             ->latest()
             ->get();
 
-        // 🔥 SUMMARY (LEBIH CEPAT)
         $total = (clone $query)->sum('amount');
 
         $paid = (clone $query)

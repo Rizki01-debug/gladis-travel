@@ -11,19 +11,22 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
+    // ================= MASS ASSIGNMENT =================
     protected $fillable = [
         'name',
         'email',
         'password',
         'role_id',
-        'theme_color' // 🔥 wajib
+        'theme_color'
     ];
 
+    // ================= HIDDEN =================
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
+    // ================= CAST =================
     protected function casts(): array
     {
         return [
@@ -32,18 +35,34 @@ class User extends Authenticatable
         ];
     }
 
-    // 🔗 RELASI
+    // ================= RELATION =================
+
+    // 🔥 ROLE
     public function role()
     {
         return $this->belongsTo(Role::class);
     }
 
+    // 🔥 DRIVER → VEHICLES (INI BARU 🔥)
+    public function vehicles()
+    {
+        return $this->hasMany(Vehicle::class, 'driver_id');
+    }
+
+    // 🔥 DRIVER → EARNINGS
     public function earnings()
     {
         return $this->hasMany(DriverEarning::class, 'driver_id');
     }
 
-    // 🔐 HELPER ROLE
+    // 🔥 PASSENGER → BOOKINGS (INI JUGA PENTING 🔥)
+    public function bookings()
+    {
+        return $this->hasMany(Booking::class);
+    }
+
+    // ================= HELPER ROLE =================
+
     public function isSuperAdmin(): bool
     {
         return $this->role_id === 1;

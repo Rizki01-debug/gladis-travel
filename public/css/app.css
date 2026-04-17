@@ -43,3 +43,8 @@ body {
 .text-primary-custom {
     color: var(--primary-color);
 }
+
+.disabled-seat {
+        pointer-events: none; /* 🔥 KUNCI UTAMA */
+        cursor: not-allowed;
+    }
