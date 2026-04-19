@@ -1,50 +1,293 @@
-/* RESET */
-* {
+/* ================= ROOT / THEME ================= */
+:root {
+    --primary-color: #1e293b;
+    --bg-main: #f5f7fb;
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+    --border-color: #e2e8f0;
+}
+
+/* ================= RESET ================= */
+*,
+*::before,
+*::after {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
-/* BODY */
+/* ================= BODY ================= */
 body {
-    font-family: 'Poppins', sans-serif;
-    background-color: #f5f7fb;
-    color: #333;
+    font-family: "Poppins", sans-serif;
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    line-height: 1.5;
 }
 
-/* CONTAINER */
+/* ================= LAYOUT ================= */
+.main-wrapper {
+    margin-left: 250px;
+    transition: all 0.3s ease;
+}
+
+@media (max-width: 768px) {
+    .main-wrapper {
+        margin-left: 0;
+    }
+}
+
+/* ================= CONTAINER ================= */
 .container-custom {
     padding: 20px;
 }
 
-/* CARD */
-.card-custom {
-    background: white;
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+/* ================= CARD ================= */
+.card-premium {
+    background: #fff;
+    border: none;
+    border-radius: 14px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
 }
 
-/* BUTTON */
+.card-premium:hover {
+    transform: translateY(-2px);
+}
+
+/* ================= TABLE ================= */
+.table-premium {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.table-premium thead {
+    background: #f8fafc;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.table-premium th,
+.table-premium td {
+    vertical-align: middle;
+    padding: 14px;
+    border-color: var(--border-color);
+    font-size: 14px;
+}
+
+.table-premium tbody tr {
+    transition: all 0.2s ease;
+}
+
+.table-premium tbody tr:hover {
+    background-color: #f1f5f9;
+}
+
+/* ================= BUTTON ================= */
+.btn-premium {
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-premium:hover {
+    transform: translateY(-1px);
+}
+
+/* PRIMARY CUSTOM */
 .btn-primary-custom {
     background-color: var(--primary-color);
     border: none;
     color: white;
-    padding: 10px 16px;
-    border-radius: 8px;
-    cursor: pointer;
 }
 
 .btn-primary-custom:hover {
     opacity: 0.9;
 }
 
-/* TEXT */
+/* ================= BADGE ================= */
+.badge-soft {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* ================= TEXT ================= */
 .text-primary-custom {
     color: var(--primary-color);
 }
 
+.text-muted {
+    color: var(--text-muted) !important;
+}
+
+/* ================= EMPTY STATE ================= */
+.empty-state {
+    padding: 40px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+/* ================= SEAT ================= */
 .disabled-seat {
-        pointer-events: none; /* 🔥 KUNCI UTAMA */
-        cursor: not-allowed;
+    pointer-events: none;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+/* ================= PAGINATION (🔥 FIX BUG SVG) ================= */
+.pagination {
+    justify-content: center;
+    gap: 4px;
+}
+
+.page-link {
+    border-radius: 8px !important;
+    margin: 0 2px;
+    border: 1px solid var(--border-color);
+    font-size: 14px;
+    padding: 6px 12px;
+}
+
+.page-link:hover {
+    background-color: var(--primary-color);
+    color: #fff;
+}
+
+/* 🔥 FIX ICON PAGINATION (INI YANG BIKIN ERROR KEMARIN) */
+.pagination svg {
+    width: 16px !important;
+    height: 16px !important;
+}
+
+/* ================= SVG GLOBAL SAFE ================= */
+svg {
+    max-width: 100%;
+    height: auto;
+}
+
+/* ================= SCROLLBAR ================= */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+}
+
+/* ================= ANIMATION ================= */
+.fade-in {
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(5px);
     }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ================= MOBILE IMPROVEMENT ================= */
+@media (max-width: 768px) {
+    .card-premium {
+        border-radius: 10px;
+        padding: 12px;
+    }
+
+    .table-premium th,
+    .table-premium td {
+        padding: 10px;
+        font-size: 13px;
+    }
+}
+
+/* ================= FIX PAGINATION FINAL ================= */
+
+/* wrapper */
+.pagination-wrapper {
+    display: flex;
+    justify-content: center;
+}
+
+/* reset semua pagination */
+.pagination {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* tombol */
+.pagination .page-link {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+    padding: 0;
+    font-size: 14px;
+    border-radius: 8px !important;
+}
+
+/* 🔥 SUPER FIX (biang kerok) */
+.pagination svg {
+    width: 14px !important;
+    height: 14px !important;
+}
+
+/* prev next */
+.pagination .page-item:first-child .page-link,
+.pagination .page-item:last-child .page-link {
+    font-size: 12px;
+}
+
+/* hover */
+.pagination .page-link:hover {
+    background-color: var(--primary-color);
+    color: #fff;
+}
+
+/* active */
+.pagination .active .page-link {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: #fff;
+}
+
+/* ================= THEME OPTION ================= */
+.theme-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    gap: 6px;
+}
+
+.theme-option input {
+    display: none;
+}
+
+.theme-box {
+    width: 45px;
+    height: 45px;
+    border-radius: 10px;
+    border: 2px solid transparent;
+    transition: 0.2s;
+}
+
+/* ACTIVE */
+.theme-option input:checked + .theme-box {
+    border: 3px solid #000;
+    transform: scale(1.05);
+}
+
+/* HOVER */
+.theme-option:hover .theme-box {
+    transform: scale(1.08);
+}

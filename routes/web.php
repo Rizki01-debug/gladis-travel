@@ -15,12 +15,14 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\TariffController;
 use App\Http\Controllers\FeatureController;
 use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\UserController;
 
 /*
 |--------------------------------------------------------------------------
 | PUBLIC
 |--------------------------------------------------------------------------
 */
+
 Route::get('/', fn() => view('welcome'));
 
 /*
@@ -28,7 +30,7 @@ Route::get('/', fn() => view('welcome'));
 | AUTH (SEMUA USER LOGIN)
 |--------------------------------------------------------------------------
 */
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth'])->group(function () {
 
     /*
     |--------------------------------------------------------------------------
@@ -48,6 +50,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/driver', [DashboardController::class, 'driver'])
             ->middleware('role:3')
             ->name('driver.dashboard');
+
+        Route::get('/dashboard', [DashboardController::class, 'user'])
+            ->name('dashboard.user');
     });
 
     /*
@@ -63,7 +68,15 @@ Route::middleware('auth')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | MASTER DATA
+    | USER MANAGEMENT (SUPER ADMIN)
+    |--------------------------------------------------------------------------
+    */
+    Route::resource('users', UserController::class)
+        ->middleware('role:1');
+
+    /*
+    |--------------------------------------------------------------------------
+    | MASTER DATA (FEATURE BASED)
     |--------------------------------------------------------------------------
     */
     Route::resource('vehicles', VehicleController::class)->middleware('feature:vehicles');
@@ -74,7 +87,7 @@ Route::middleware('auth')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | FEATURE MANAGEMENT (SUPER ADMIN)
+    | FEATURE MANAGEMENT
     |--------------------------------------------------------------------------
     */
     Route::prefix('features')
@@ -88,7 +101,7 @@ Route::middleware('auth')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | BOOKING (🔥 FIX DI SINI)
+    | BOOKING (PASSENGER)
     |--------------------------------------------------------------------------
     */
     Route::prefix('booking')
@@ -101,7 +114,7 @@ Route::middleware('auth')->group(function () {
             Route::post('/store', [BookingController::class, 'store'])->name('store');
             Route::get('/my-booking', [BookingController::class, 'myBooking'])->name('my');
 
-            // 🔥 FIX: pakai DELETE (bukan POST)
+            // 🔥 FINAL: pakai DELETE (sudah sesuai blade)
             Route::delete('/{id}/cancel', [BookingController::class, 'cancel'])
                 ->name('cancel');
         });
@@ -118,16 +131,15 @@ Route::middleware('auth')->group(function () {
 
             Route::get('/', [DriverController::class, 'index'])->name('index');
             Route::get('/trips', [DriverController::class, 'trips'])->name('trips');
+            Route::get('/earnings', [DriverController::class, 'earnings'])->name('earnings');
 
             Route::post('/trip/{id}/start', [DriverController::class, 'start'])->name('trip.start');
             Route::post('/trip/{id}/complete', [DriverController::class, 'complete'])->name('trip.complete');
 
-            Route::get('/earnings', [DriverController::class, 'earnings'])->name('earnings');
-
             Route::post('/{id}/confirm', [DriverController::class, 'confirm'])->name('confirm');
             Route::post('/{id}/reject', [DriverController::class, 'reject'])->name('reject');
 
-            // 🔥 paling bawah (biar gak ketabrak)
+            // 🔥 HARUS PALING BAWAH
             Route::get('/{id}', [DriverController::class, 'show'])->name('show');
         });
 
@@ -190,7 +202,7 @@ Route::middleware('auth')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| ACTIVITY LOG
+| ACTIVITY LOG (SUPER ADMIN)
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth', 'role:1', 'feature:activity_logs'])
@@ -206,8 +218,11 @@ Route::middleware(['auth', 'role:1', 'feature:activity_logs'])
 | TEST
 |--------------------------------------------------------------------------
 */
-Route::get('/test-driver', function () {
-    return route('driver.index');
-});
+Route::get('/test-driver', fn() => route('driver.index'));
 
+/*
+|--------------------------------------------------------------------------
+| AUTH (DEFAULT)
+|--------------------------------------------------------------------------
+*/
 require __DIR__ . '/auth.php';
