@@ -6,6 +6,7 @@ use App\Models\MeetingPoint;
 use App\Models\City;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class MeetingPointController extends Controller
 {
@@ -18,21 +19,36 @@ class MeetingPointController extends Controller
             abort(403, 'Akses ditolak');
         }
 
-        if (!featureActive('meeting_points')) {
+        if (!function_exists('featureActive') || !featureActive('meeting_points')) {
             abort(403, 'Fitur meeting point dinonaktifkan');
         }
     }
 
     // ================= INDEX =================
-    public function index()
+    public function index(Request $request)
     {
         $this->authorizeAccess();
 
-        $points = MeetingPoint::with('city')
-            ->latest()
-            ->paginate(10);
+        $query = MeetingPoint::with('city');
 
-        return view('meeting_points.index', compact('points'));
+        // 🔍 SEARCH
+        if ($request->filled('search')) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
+
+        // 🔍 FILTER CITY
+        if ($request->filled('city_id')) {
+            $query->where('city_id', $request->city_id);
+        }
+
+        $points = $query
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
+
+        $cities = City::orderBy('name')->get();
+
+        return view('meeting_points.index', compact('points', 'cities'));
     }
 
     // ================= CREATE =================
@@ -55,23 +71,24 @@ class MeetingPointController extends Controller
             'name' => 'required|string|max:255',
             'address' => 'nullable|string|max:255',
 
-            // 🔥 FIX: pakai decimal validation lebih aman
-            'latitude' => 'required|numeric',
-            'longitude' => 'required|numeric'
+            // 🔥 VALIDASI KOORDINAT
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180'
         ]);
 
         try {
-            $point = MeetingPoint::create([
-                'city_id' => $validated['city_id'],
-                'name' => trim($validated['name']),
-                'address' => $validated['address'] ?? null,
+            DB::transaction(function () use ($validated) {
 
-                // 🔥 CAST KE FLOAT (PENTING UNTUK MAP)
-                'latitude' => (float) $validated['latitude'],
-                'longitude' => (float) $validated['longitude']
-            ]);
+                $point = MeetingPoint::create([
+                    'city_id' => $validated['city_id'],
+                    'name' => trim($validated['name']),
+                    'address' => $validated['address'] ?? null,
+                    'latitude' => (float) $validated['latitude'],
+                    'longitude' => (float) $validated['longitude']
+                ]);
 
-            logActivity('Meeting Point', 'Tambah titik: ' . $point->name);
+                logActivity('Meeting Point', 'Tambah titik: ' . $point->name);
+            });
 
             return redirect()
                 ->route('meeting-points.index')
@@ -108,20 +125,23 @@ class MeetingPointController extends Controller
             'city_id' => 'required|exists:cities,id',
             'name' => 'required|string|max:255',
             'address' => 'nullable|string|max:255',
-            'latitude' => 'required|numeric',
-            'longitude' => 'required|numeric'
+            'latitude' => 'required|numeric|between:-90,90',
+            'longitude' => 'required|numeric|between:-180,180'
         ]);
 
         try {
-            $point->update([
-                'city_id' => $validated['city_id'],
-                'name' => trim($validated['name']),
-                'address' => $validated['address'] ?? null,
-                'latitude' => (float) $validated['latitude'],
-                'longitude' => (float) $validated['longitude']
-            ]);
+            DB::transaction(function () use ($point, $validated) {
 
-            logActivity('Meeting Point', 'Update titik: ' . $point->name);
+                $point->update([
+                    'city_id' => $validated['city_id'],
+                    'name' => trim($validated['name']),
+                    'address' => $validated['address'] ?? null,
+                    'latitude' => (float) $validated['latitude'],
+                    'longitude' => (float) $validated['longitude']
+                ]);
+
+                logActivity('Meeting Point', 'Update titik: ' . $point->name);
+            });
 
             return redirect()
                 ->route('meeting-points.index')
@@ -144,26 +164,24 @@ class MeetingPointController extends Controller
         try {
             $point = MeetingPoint::findOrFail($id);
 
-            // 🔥 OPTIONAL: CEK DIPAKAI DI ROUTE
             if ($point->routePoints()->exists()) {
                 return back()->withErrors('Meeting point masih digunakan di rute!');
             }
 
-            $name = $point->name;
+            DB::transaction(function () use ($point) {
+                $name = $point->name;
 
-            $point->delete();
+                $point->delete();
 
-            logActivity('Meeting Point', 'Hapus titik: ' . $name);
+                logActivity('Meeting Point', 'Hapus titik: ' . $name);
+            });
 
-            return redirect()
-                ->route('meeting-points.index')
-                ->with('success', 'Meeting point berhasil dihapus!');
+            return back()->with('success', 'Meeting point berhasil dihapus!');
         } catch (\Throwable $e) {
 
             logger()->error('MeetingPoint DELETE ERROR: ' . $e->getMessage());
 
-            return back()
-                ->withErrors('Gagal menghapus data!');
+            return back()->withErrors('Gagal menghapus data!');
         }
     }
 }

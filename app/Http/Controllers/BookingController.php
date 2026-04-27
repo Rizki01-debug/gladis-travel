@@ -50,7 +50,7 @@ class BookingController extends Controller
             'routePoints.meetingPoint'
         ])->findOrFail($id);
 
-        // VALIDASI DATA
+        // ================= VALIDASI DASAR =================
         if (!$schedule->origin || !$schedule->destination) {
             abort(500, 'Origin / Destination belum diset!');
         }
@@ -73,8 +73,12 @@ class BookingController extends Controller
             abort(500, 'Tarif belum tersedia!');
         }
 
-        $seats = Seat::where('vehicle_id', $schedule->vehicle_id)->get();
+        // ================= SEATS =================
+        $seats = Seat::where('vehicle_id', $schedule->vehicle_id)
+            ->orderBy('seat_number')
+            ->get();
 
+        // ================= MEETING POINT =================
         $meetingPoints = $schedule->routePoints
             ->pluck('meetingPoint')
             ->filter()
@@ -86,18 +90,18 @@ class BookingController extends Controller
             ])
             ->values();
 
+        // ================= BOOKED SEATS =================
         $bookedSeats = BookingSeat::whereHas('booking', function ($q) use ($schedule) {
             $q->where('schedule_id', $schedule->id)
                 ->whereIn('status', ['pending', 'confirmed']);
         })->pluck('seat_id')->toArray();
 
-        return view('booking.create', compact(
-            'schedule',
-            'seats',
-            'meetingPoints',
-            'bookedSeats',
-            'tariff'
-        ) + [
+        return view('booking.create', [
+            'schedule' => $schedule,
+            'seats' => $seats,
+            'meetingPoints' => $meetingPoints,
+            'bookedSeatIds' => $bookedSeats,
+            'tariff' => $tariff,
             'origin_lat' => (float) $schedule->origin->latitude,
             'origin_lng' => (float) $schedule->origin->longitude,
             'dest_lat' => (float) $schedule->destination->latitude,
@@ -123,7 +127,6 @@ class BookingController extends Controller
             'meeting_point_id' => 'nullable|exists:meeting_points,id',
             'pickup_maps' => 'nullable|string',
 
-            // 🔥 WAJIB (DARI FRONTEND)
             'distance_km' => 'required|numeric|min:1',
             'price_total' => 'required|numeric|min:1000'
         ]);
@@ -132,30 +135,17 @@ class BookingController extends Controller
             ->findOrFail($validated['schedule_id']);
 
         // ================= VALIDASI H-3 =================
-        $departure = Carbon::parse($validated['departure_date'])->startOfDay();
-        $today = now()->startOfDay();
-
-        if ($today->diffInDays($departure, false) < 3) {
+        if (now()->diffInDays(Carbon::parse($validated['departure_date']), false) < 3) {
             return back()->withErrors('Booking minimal H-3 sebelum keberangkatan')->withInput();
         }
 
-        // ================= VALIDASI TARIF =================
         $tariff = Tariff::latest()->first();
         if (!$tariff) {
-            return back()->withErrors('Tarif belum tersedia!')->withInput();
+            return back()->withErrors('Tarif belum tersedia!');
         }
 
         try {
             return DB::transaction(function () use ($validated, $tariff, $schedule) {
-
-                // ================= VALIDASI ROUTE =================
-                if ($schedule->routePoints->isEmpty()) {
-                    throw new \Exception('Rute belum diset!');
-                }
-
-                if (!$schedule->vehicle) {
-                    throw new \Exception('Kendaraan belum diset!');
-                }
 
                 // ================= VALIDASI PICKUP =================
                 if ($validated['pickup_type'] === 'meeting_point') {
@@ -189,13 +179,9 @@ class BookingController extends Controller
                     ->lockForUpdate()
                     ->get();
 
-                if ($seats->count() !== count($validated['seat_id'])) {
-                    throw new \Exception('Data kursi tidak valid!');
-                }
-
                 foreach ($seats as $seat) {
 
-                    if ($seat->is_driver_seat) {
+                    if ($seat->is_driver_seat ?? false) {
                         throw new \Exception('Kursi driver tidak bisa dibooking!');
                     }
 
@@ -204,7 +190,7 @@ class BookingController extends Controller
                     }
                 }
 
-                // ================= CEK DOUBLE BOOKING =================
+                // ================= DOUBLE BOOKING =================
                 $conflict = BookingSeat::whereIn('seat_id', $validated['seat_id'])
                     ->lockForUpdate()
                     ->whereHas('booking', function ($q) use ($validated) {
@@ -214,18 +200,13 @@ class BookingController extends Controller
                     ->exists();
 
                 if ($conflict) {
-                    throw new \Exception('Ada kursi yang sudah dibooking!');
+                    throw new \Exception('Kursi sudah dibooking!');
                 }
 
-                // ================= 🔥 AMBIL DARI FRONTEND =================
+                // ================= HITUNG HARGA =================
                 $distance = (float) $validated['distance_km'];
                 $frontendPrice = (float) $validated['price_total'];
 
-                if ($distance <= 0) {
-                    throw new \Exception('Jarak tidak valid!');
-                }
-
-                // ================= 🔥 HITUNG ULANG (SERVER SIDE) =================
                 $pricePerSeat =
                     $tariff->base_price +
                     ($distance * $tariff->price_per_km);
@@ -246,12 +227,10 @@ class BookingController extends Controller
                 $totalRaw = $pricePerSeat * count($validated['seat_id']);
                 $serverPrice = ceil($totalRaw / 1000) * 1000;
 
-                // ================= 🔥 ANTI MANIPULASI =================
+                // ================= ANTI MANIPULASI =================
                 if (abs($serverPrice - $frontendPrice) > 10000) {
                     throw new \Exception('Harga tidak valid (terdeteksi manipulasi)');
                 }
-
-                $totalPrice = $serverPrice;
 
                 // ================= CREATE BOOKING =================
                 $booking = Booking::create([
@@ -263,19 +242,17 @@ class BookingController extends Controller
                     'pickup_maps' => $validated['pickup_maps'] ?? null,
                     'phone' => $validated['phone'],
                     'distance_km' => $distance,
-                    'price_estimation' => $totalPrice,
+                    'price_estimation' => $serverPrice,
                     'status' => 'pending'
                 ]);
 
                 // ================= INSERT SEATS =================
-                BookingSeat::insert(
-                    collect($validated['seat_id'])->map(fn($seatId) => [
+                foreach ($validated['seat_id'] as $seatId) {
+                    BookingSeat::create([
                         'booking_id' => $booking->id,
-                        'seat_id' => $seatId,
-                        'created_at' => now(),
-                        'updated_at' => now()
-                    ])->toArray()
-                );
+                        'seat_id' => $seatId
+                    ]);
+                }
 
                 // ================= DRIVER EARNING =================
                 if ($schedule->vehicle->driver_id) {
@@ -283,7 +260,7 @@ class BookingController extends Controller
                         ['booking_id' => $booking->id],
                         [
                             'driver_id' => $schedule->vehicle->driver_id,
-                            'amount' => $totalPrice,
+                            'amount' => $serverPrice,
                             'status' => 'unpaid'
                         ]
                     );
@@ -295,9 +272,7 @@ class BookingController extends Controller
                     ->with('success', 'Booking berhasil!');
             });
         } catch (\Throwable $e) {
-            return back()
-                ->withErrors($e->getMessage())
-                ->withInput();
+            return back()->withErrors($e->getMessage())->withInput();
         }
     }
 
@@ -314,23 +289,22 @@ class BookingController extends Controller
         ])
             ->where('user_id', Auth::id());
 
-        // ================= FILTER STATUS =================
-        if ($request->status && in_array($request->status, ['pending', 'confirmed', 'completed', 'cancelled'])) {
+        // FILTER
+        if (
+            $request->filled('status') &&
+            in_array($request->status, ['pending', 'confirmed', 'completed', 'cancelled'])
+        ) {
             $query->where('status', $request->status);
         }
 
-        // ================= SEARCH =================
-        if ($request->search) {
+        // SEARCH
+        if ($request->filled('search')) {
             $search = $request->search;
 
             $query->where(function ($q) use ($search) {
                 $q->where('phone', 'like', "%$search%")
-                    ->orWhereHas('schedule.origin', function ($q2) use ($search) {
-                        $q2->where('name', 'like', "%$search%");
-                    })
-                    ->orWhereHas('schedule.destination', function ($q2) use ($search) {
-                        $q2->where('name', 'like', "%$search%");
-                    });
+                    ->orWhereHas('schedule.origin', fn($q2) => $q2->where('name', 'like', "%$search%"))
+                    ->orWhereHas('schedule.destination', fn($q2) => $q2->where('name', 'like', "%$search%"));
             });
         }
 
@@ -344,16 +318,13 @@ class BookingController extends Controller
     {
         $this->authorizeBookingAccess();
 
-        $booking = Booking::where('user_id', Auth::id())
-            ->findOrFail($id);
+        $booking = Booking::where('user_id', Auth::id())->findOrFail($id);
 
         if (!$booking->canBeCancelled()) {
             return back()->withErrors('Booking tidak bisa dibatalkan');
         }
 
-        $booking->update([
-            'status' => 'cancelled'
-        ]);
+        $booking->update(['status' => 'cancelled']);
 
         logActivity('Cancel Booking', 'Booking ID: ' . $booking->id);
 

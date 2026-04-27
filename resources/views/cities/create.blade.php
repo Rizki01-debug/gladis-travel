@@ -1,73 +1,149 @@
 @extends('layouts.app')
 
 @section('content')
+    <div class="container-fluid fade-in">
 
-<h3>Tambah Kota</h3>
+        {{-- ================= HEADER ================= --}}
+        <div class="mb-4">
+            <h4 class="fw-bold mb-1">📍 Tambah Kota</h4>
+            <small class="text-muted">Pilih lokasi kota melalui peta</small>
+        </div>
 
-<form method="POST" action="{{ route('cities.store') }}">
-    @csrf
+        {{-- ================= CARD ================= --}}
+        <div class="card card-premium border-0">
+            <div class="card-body">
 
-    {{-- NAMA --}}
-    <input type="text" name="name" class="form-control mb-3" placeholder="Nama Kota" required>
+                {{-- ERROR --}}
+                @if ($errors->any())
+                    <div class="alert alert-danger">
+                        <b>Terjadi kesalahan:</b>
+                        <ul class="mb-0">
+                            @foreach ($errors->all() as $err)
+                                <li>{{ $err }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
 
-    {{-- LATITUDE --}}
-    <input type="text" name="latitude" id="latitude" class="form-control mb-2" placeholder="Latitude" readonly>
+                <form method="POST" action="{{ route('cities.store') }}">
+                    @csrf
 
-    {{-- LONGITUDE --}}
-    <input type="text" name="longitude" id="longitude" class="form-control mb-3" placeholder="Longitude" readonly>
+                    <div class="row">
 
-    {{-- MAP --}}
-    <div id="map" style="height: 400px;" class="mb-3"></div>
+                        {{-- LEFT --}}
+                        <div class="col-md-4">
 
-    <small class="text-muted">Klik map untuk memilih lokasi kota</small>
+                            {{-- NAMA --}}
+                            <div class="mb-3">
+                                <label class="form-label">Nama Kota</label>
+                                <input type="text" name="name" class="form-control" value="{{ old('name') }}"
+                                    placeholder="Contoh: Indramayu" required>
+                            </div>
 
-    <br><br>
+                            {{-- LAT --}}
+                            <div class="mb-3">
+                                <label class="form-label">Latitude</label>
+                                <input type="text" name="latitude" id="latitude" class="form-control"
+                                    value="{{ old('latitude') }}" readonly>
+                            </div>
 
-    <button class="btn btn-success">Simpan</button>
+                            {{-- LNG --}}
+                            <div class="mb-3">
+                                <label class="form-label">Longitude</label>
+                                <input type="text" name="longitude" id="longitude" class="form-control"
+                                    value="{{ old('longitude') }}" readonly>
+                            </div>
 
-</form>
+                            <small class="text-muted">
+                                Klik pada peta untuk memilih lokasi
+                            </small>
 
+                            {{-- BUTTON --}}
+                            <div class="mt-4">
+                                <button class="btn btn-success btn-premium w-100">
+                                    💾 Simpan Kota
+                                </button>
+                            </div>
+
+                        </div>
+
+                        {{-- RIGHT (MAP) --}}
+                        <div class="col-md-8">
+                            <div id="map" style="height:450px;border-radius:12px;"></div>
+                        </div>
+
+                    </div>
+
+                </form>
+
+            </div>
+        </div>
+
+    </div>
 @endsection
 
 
+{{-- ================= LEAFLET ================= --}}
 @push('styles')
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 @endpush
 
-
 @push('scripts')
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-<script>
-document.addEventListener("DOMContentLoaded", function () {
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
 
-    // 🔥 INIT MAP
-    var map = L.map('map').setView([-6.9, 107.6], 6);
+            const latInput = document.getElementById('latitude');
+            const lngInput = document.getElementById('longitude');
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap'
-    }).addTo(map);
+            let defaultLat = latInput.value || -6.9;
+            let defaultLng = lngInput.value || 107.6;
 
-    var marker;
+            let map = L.map('map').setView([defaultLat, defaultLng], 6);
 
-    // 🔥 CLICK MAP
-    map.on('click', function(e) {
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-        var lat = e.latlng.lat;
-        var lng = e.latlng.lng;
+            let marker = null;
 
-        // isi input
-        document.getElementById('latitude').value = lat;
-        document.getElementById('longitude').value = lng;
+            // 🔥 SET MARKER
+            function setMarker(lat, lng) {
 
-        // pindahkan marker
-        if (marker) {
-            map.removeLayer(marker);
-        }
+                latInput.value = lat.toFixed(6);
+                lngInput.value = lng.toFixed(6);
 
-        marker = L.marker([lat, lng]).addTo(map);
-    });
+                if (marker) {
+                    marker.setLatLng([lat, lng]);
+                } else {
+                    marker = L.marker([lat, lng], {
+                        draggable: true
+                    }).addTo(map);
 
-});
-</script>
+                    // 🔥 DRAG UPDATE
+                    marker.on('dragend', function(e) {
+                        let pos = e.target.getLatLng();
+                        latInput.value = pos.lat.toFixed(6);
+                        lngInput.value = pos.lng.toFixed(6);
+                    });
+                }
+            }
+
+            // 🔥 CLICK MAP
+            map.on('click', function(e) {
+                setMarker(e.latlng.lat, e.latlng.lng);
+            });
+
+            // 🔥 LOAD OLD VALUE (EDIT / VALIDATION)
+            if (latInput.value && lngInput.value) {
+                setMarker(parseFloat(latInput.value), parseFloat(lngInput.value));
+                map.setView([latInput.value, lngInput.value], 10);
+            }
+
+            // 🔥 FIX MAP RENDER BUG
+            setTimeout(() => {
+                map.invalidateSize();
+            }, 200);
+
+        });
+    </script>
 @endpush

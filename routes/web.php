@@ -16,6 +16,9 @@ use App\Http\Controllers\TariffController;
 use App\Http\Controllers\FeatureController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\LandingController;
+use App\Http\Controllers\Admin\SectionController;
+use App\Http\Controllers\Admin\WebSettingController;
 
 /*
 |--------------------------------------------------------------------------
@@ -23,7 +26,45 @@ use App\Http\Controllers\UserController;
 |--------------------------------------------------------------------------
 */
 
-Route::get('/', fn() => view('welcome'));
+// 🔥 Landing Page CMS (ganti welcome default)
+Route::get('/', [LandingController::class, 'index'])
+    ->name('landing');
+
+// 🔥 Preview Landing (GET → tampil iframe)
+Route::get('/preview', [LandingController::class, 'preview'])
+    ->name('landing.preview');
+
+// 🔥 Store Preview (POST → kirim data sementara)
+Route::post('/preview', [LandingController::class, 'storePreview'])
+    ->name('landing.preview.store');
+
+
+/*
+|--------------------------------------------------------------------------
+| AUTH USER (PASSENGER FLOW)
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware('auth')->group(function () {
+
+    // 🔥 setelah login → ke dashboard (role passenger / role 4)
+    Route::get('/booking', function () {
+        return redirect()->route('dashboard');
+    })->name('booking.redirect');
+});
+
+Route::prefix('admin')
+    ->middleware(['auth', 'role:1']) // super admin
+    ->name('admin.')
+    ->group(function () {
+
+        Route::resource('sections', SectionController::class);
+        Route::patch('sections/{section}/toggle', [SectionController::class, 'toggle'])
+            ->name('sections.toggle');
+
+        Route::get('settings', [WebSettingController::class, 'edit'])->name('settings.edit');
+        Route::post('settings', [WebSettingController::class, 'update'])->name('settings.update');
+    });
 
 /*
 |--------------------------------------------------------------------------
@@ -52,6 +93,7 @@ Route::middleware(['auth'])->group(function () {
             ->name('driver.dashboard');
 
         Route::get('/dashboard', [DashboardController::class, 'user'])
+            ->middleware('role:4')
             ->name('dashboard.user');
     });
 
@@ -91,12 +133,17 @@ Route::middleware(['auth'])->group(function () {
     |--------------------------------------------------------------------------
     */
     Route::prefix('features')
-        ->middleware('role:1')
+        ->middleware(['auth', 'role:1']) // 🔥 wajib login + hanya super admin
         ->name('features.')
         ->group(function () {
 
-            Route::get('/', [FeatureController::class, 'index'])->name('index');
-            Route::post('/toggle', [FeatureController::class, 'toggle'])->name('toggle');
+            // 🔥 halaman pengaturan fitur
+            Route::get('/', [FeatureController::class, 'index'])
+                ->name('index');
+
+            // 🔥 update semua fitur (bulk)
+            Route::post('/update', [FeatureController::class, 'bulkUpdate'])
+                ->name('bulkUpdate');
         });
 
     /*

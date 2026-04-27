@@ -18,18 +18,18 @@ class RoutePoint extends Model
 
     // ================= CAST =================
     protected $casts = [
-        'order' => 'integer'
+        'order' => 'integer',
     ];
 
     // ================= RELATION =================
 
-    // 🔥 RELASI KE MEETING POINT
+    // 🔥 MEETING POINT
     public function meetingPoint()
     {
         return $this->belongsTo(MeetingPoint::class, 'meeting_point_id');
     }
 
-    // 🔥 RELASI KE SCHEDULE
+    // 🔥 SCHEDULE
     public function schedule()
     {
         return $this->belongsTo(DepartureSchedule::class, 'schedule_id');
@@ -37,28 +37,58 @@ class RoutePoint extends Model
 
     // ================= SCOPE =================
 
-    // 🔥 URUTKAN BERDASARKAN ORDER
+    // 🔥 URUTAN AMAN (hindari conflict reserved keyword)
     public function scopeOrdered($query)
     {
-        return $query->orderBy('order');
+        return $query->orderBy('order', 'asc');
     }
 
-    // ================= HELPER =================
+    // 🔥 WITH RELATION (ANTI N+1 QUERY)
+    public function scopeWithPoint($query)
+    {
+        return $query->with('meetingPoint');
+    }
 
-    // 🔥 AMBIL LAT LNG LANGSUNG (biar gampang dipakai)
+    // ================= ACCESSOR =================
+
+    // 🔥 LATITUDE
     public function getLatitudeAttribute()
     {
-        return $this->meetingPoint?->latitude;
+        return (float) ($this->meetingPoint?->latitude ?? 0);
     }
 
+    // 🔥 LONGITUDE
     public function getLongitudeAttribute()
     {
-        return $this->meetingPoint?->longitude;
+        return (float) ($this->meetingPoint?->longitude ?? 0);
     }
 
     // 🔥 NAMA TITIK
     public function getNameAttribute()
     {
         return $this->meetingPoint?->name ?? '-';
+    }
+
+    // 🔥 COORDINATE (🔥 PENTING BUAT MAP)
+    public function getCoordinateAttribute()
+    {
+        if (!$this->meetingPoint) {
+            return null;
+        }
+
+        return [
+            'lat' => (float) $this->meetingPoint->latitude,
+            'lng' => (float) $this->meetingPoint->longitude,
+        ];
+    }
+
+    // ================= HELPER =================
+
+    // 🔥 VALID POINT (BIAR GA ERROR DI MAP)
+    public function isValid(): bool
+    {
+        return $this->meetingPoint &&
+            $this->meetingPoint->latitude &&
+            $this->meetingPoint->longitude;
     }
 }

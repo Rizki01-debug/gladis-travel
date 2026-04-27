@@ -23,7 +23,6 @@ class DepartureScheduleController extends Controller
             abort(403, 'Akses ditolak');
         }
 
-        // 🔥 sementara disable kalau lagi debug
         if (function_exists('featureActive') && !featureActive('schedules')) {
             abort(403, 'Fitur jadwal dinonaktifkan');
         }
@@ -35,20 +34,13 @@ class DepartureScheduleController extends Controller
         $this->authorizeAccess();
 
         $schedules = DepartureSchedule::with([
-            'origin',
-            'destination',
-            'vehicle',
-            'routePoints.meetingPoint'
-        ])->latest()->get();
-
-        // 🔥 SAFE DISTANCE
-        foreach ($schedules as $schedule) {
-            try {
-                $schedule->distance_km = calculateRouteDistance($schedule->routePoints);
-            } catch (\Throwable $e) {
-                $schedule->distance_km = 0;
-            }
-        }
+            'origin:id,name',
+            'destination:id,name',
+            'vehicle:id,name',
+            'routePoints.meetingPoint:id,name,latitude,longitude'
+        ])
+            ->latest()
+            ->paginate(10);
 
         return view('schedules.index', compact('schedules'));
     }
@@ -70,56 +62,136 @@ class DepartureScheduleController extends Controller
     {
         $this->authorizeAccess();
 
-        // ================= VALIDATION =================
         $validated = $request->validate([
             'origin_city_id' => 'required|exists:cities,id',
-            'destination_city_id' => 'required|exists:cities,id|different:origin_city_id',
+            'destination_city_id' => 'required|different:origin_city_id|exists:cities,id',
             'vehicle_id' => 'required|exists:vehicles,id',
             'departure_time' => 'required|date_format:H:i',
 
-            'route_points' => 'required|array|min:1',
-            'route_points.*' => 'exists:meeting_points,id'
+            'route_points' => 'required|array|min:2',
+            'route_points.*' => 'distinct|exists:meeting_points,id'
         ]);
 
         try {
             DB::beginTransaction();
 
-            // ================= CREATE SCHEDULE =================
-            $schedule = DepartureSchedule::create([
-                'origin_city_id' => $validated['origin_city_id'],
-                'destination_city_id' => $validated['destination_city_id'],
-                'vehicle_id' => $validated['vehicle_id'],
-                'departure_time' => $validated['departure_time'],
-            ]);
+            $schedule = DepartureSchedule::create($validated);
 
-            // 🔥 VALIDASI HARD (kalau gagal, rollback)
-            if (!$schedule) {
-                throw new \Exception('Gagal menyimpan schedule');
-            }
-
-            // ================= ROUTE POINTS =================
-            foreach ($validated['route_points'] as $index => $pointId) {
-                RoutePoint::create([
-                    'schedule_id' => $schedule->id,
-                    'meeting_point_id' => $pointId,
-                    'order' => $index + 1
-                ]);
-            }
+            $this->syncRoutePoints($schedule->id, $validated['route_points']);
 
             DB::commit();
 
             logActivity('Schedule', 'Tambah jadwal ID: ' . $schedule->id);
 
-            return redirect()
-                ->route('schedules.index')
+            return redirect()->route('schedules.index')
                 ->with('success', 'Jadwal berhasil dibuat!');
         } catch (\Throwable $e) {
-
             DB::rollBack();
 
             return back()
-                ->withErrors('ERROR: ' . $e->getMessage())
+                ->withErrors('Gagal menyimpan jadwal')
                 ->withInput();
         }
+    }
+
+    // ================= EDIT =================
+    public function edit($id)
+    {
+        $this->authorizeAccess();
+
+        $schedule = DepartureSchedule::with('routePoints')->findOrFail($id);
+
+        return view('schedules.edit', [
+            'schedule' => $schedule,
+            'cities' => City::orderBy('name')->get(),
+            'vehicles' => Vehicle::latest()->get(),
+            'meetingPoints' => MeetingPoint::orderBy('name')->get()
+        ]);
+    }
+
+    // ================= UPDATE =================
+    public function update(Request $request, $id)
+    {
+        $this->authorizeAccess();
+
+        $schedule = DepartureSchedule::findOrFail($id);
+
+        $validated = $request->validate([
+            'origin_city_id' => 'required|exists:cities,id',
+            'destination_city_id' => 'required|different:origin_city_id|exists:cities,id',
+            'vehicle_id' => 'required|exists:vehicles,id',
+            'departure_time' => 'required|date_format:H:i',
+
+            'route_points' => 'required|array|min:2',
+            'route_points.*' => 'distinct|exists:meeting_points,id'
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $schedule->update($validated);
+
+            // 🔥 RESET ROUTE POINT
+            RoutePoint::where('schedule_id', $schedule->id)->delete();
+
+            $this->syncRoutePoints($schedule->id, $validated['route_points']);
+
+            DB::commit();
+
+            logActivity('Schedule', 'Update jadwal ID: ' . $schedule->id);
+
+            return redirect()->route('schedules.index')
+                ->with('success', 'Jadwal berhasil diupdate!');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return back()
+                ->withErrors('Gagal update jadwal')
+                ->withInput();
+        }
+    }
+
+    // ================= DELETE =================
+    public function destroy($id)
+    {
+        $this->authorizeAccess();
+
+        try {
+            $schedule = DepartureSchedule::findOrFail($id);
+
+            DB::beginTransaction();
+
+            RoutePoint::where('schedule_id', $schedule->id)->delete();
+
+            $schedule->delete();
+
+            DB::commit();
+
+            logActivity('Schedule', 'Hapus jadwal ID: ' . $id);
+
+            return back()->with('success', 'Jadwal berhasil dihapus!');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return back()->withErrors('Gagal menghapus jadwal');
+        }
+    }
+
+    // ================= HELPER =================
+    private function syncRoutePoints($scheduleId, $points)
+    {
+        $insert = [];
+
+        foreach ($points as $i => $pointId) {
+            $insert[] = [
+                'schedule_id' => $scheduleId,
+                'meeting_point_id' => $pointId,
+                'order' => $i + 1,
+                'created_at' => now(),
+                'updated_at' => now()
+            ];
+        }
+
+        RoutePoint::insert($insert);
     }
 }

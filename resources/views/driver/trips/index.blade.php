@@ -1,34 +1,41 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="container">
+    <div class="container-fluid fade-in">
 
-        <h3 class="mb-4">🚗 Trip Saya</h3>
+        {{-- ================= HEADER ================= --}}
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h4 class="fw-bold mb-1">🚗 Trip Saya</h4>
+                <small class="text-muted">Kelola perjalanan yang sedang dan sudah selesai</small>
+            </div>
+        </div>
 
-        {{-- ALERT --}}
+        {{-- ================= ALERT ================= --}}
         @if (session('success'))
-            <div class="alert alert-success">
+            <div class="alert alert-success fade-in">
                 {{ session('success') }}
             </div>
         @endif
 
-        <div class="card shadow-sm border-0">
+        {{-- ================= CARD ================= --}}
+        <div class="card card-premium border-0">
             <div class="card-body">
 
                 <div class="table-responsive">
-                    <table class="table table-bordered table-hover align-middle">
+                    <table class="table table-premium align-middle mb-0">
 
-                        <thead class="table-light text-center">
-                            <tr>
+                        <thead>
+                            <tr class="text-center">
                                 <th>#</th>
-                                <th>Penumpang</th>
+                                <th class="text-start">Penumpang</th>
                                 <th>WA</th>
-                                <th>Rute</th>
+                                <th class="text-start">Rute</th>
                                 <th>Tanggal</th>
                                 <th>Status</th>
                                 <th>Mulai</th>
                                 <th>Selesai</th>
-                                <th width="180">Aksi</th>
+                                <th width="160">Aksi</th>
                             </tr>
                         </thead>
 
@@ -41,21 +48,24 @@
                                 <tr>
 
                                     {{-- ID --}}
-                                    <td class="text-center fw-bold">
+                                    <td class="text-center fw-semibold">
                                         #{{ $trip->id }}
                                     </td>
 
                                     {{-- PENUMPANG --}}
                                     <td>
-                                        👤 {{ optional($booking->user)->name ?? '-' }}
+                                        <div class="fw-semibold">
+                                            {{ optional($booking->user)->name ?? '-' }}
+                                        </div>
                                     </td>
 
-                                    {{-- WHATSAPP --}}
+                                    {{-- WA --}}
                                     <td class="text-center">
                                         @if ($booking && $booking->phone)
                                             <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $booking->phone) }}"
-                                                target="_blank" class="btn btn-success btn-sm">
-                                                💬 WA
+                                                target="_blank" class="btn btn-success btn-sm btn-premium"
+                                                title="Chat WhatsApp">
+                                                💬
                                             </a>
                                         @else
                                             <span class="text-muted">-</span>
@@ -64,10 +74,11 @@
 
                                     {{-- RUTE --}}
                                     <td>
-                                        <small>
-                                            <b>{{ optional($booking->schedule->origin)->name ?? '-' }}</b>
-                                            →
-                                            <b>{{ optional($booking->schedule->destination)->name ?? '-' }}</b>
+                                        <div class="fw-semibold">
+                                            {{ optional($booking->schedule->origin)->name ?? '-' }}
+                                        </div>
+                                        <small class="text-muted">
+                                            → {{ optional($booking->schedule->destination)->name ?? '-' }}
                                         </small>
                                     </td>
 
@@ -78,46 +89,48 @@
 
                                     {{-- STATUS --}}
                                     <td class="text-center">
-                                        @switch($trip->trip_status)
-                                            @case('waiting')
-                                                <span class="badge bg-secondary">Menunggu</span>
-                                            @break
+                                        @php
+                                            $statusClass = match ($trip->trip_status) {
+                                                'waiting' => 'bg-secondary text-white',
+                                                'ongoing' => 'bg-warning text-dark',
+                                                'completed' => 'bg-success text-white',
+                                                default => 'bg-secondary text-white',
+                                            };
 
-                                            @case('ongoing')
-                                                <span class="badge bg-warning text-dark">Berjalan</span>
-                                            @break
+                                            $statusLabel = match ($trip->trip_status) {
+                                                'waiting' => 'Menunggu',
+                                                'ongoing' => 'Berjalan',
+                                                'completed' => 'Selesai',
+                                                default => ucfirst($trip->trip_status),
+                                            };
+                                        @endphp
 
-                                            @case('completed')
-                                                <span class="badge bg-success">Selesai</span>
-                                            @break
-
-                                            @default
-                                                <span class="badge bg-secondary">
-                                                    {{ $trip->trip_status }}
-                                                </span>
-                                        @endswitch
+                                        <span class="badge-soft {{ $statusClass }}">
+                                            {{ $statusLabel }}
+                                        </span>
                                     </td>
 
                                     {{-- MULAI --}}
-                                    <td class="text-center">
+                                    <td class="text-center small text-muted">
                                         {{ $trip->start_time ? \Carbon\Carbon::parse($trip->start_time)->format('d M H:i') : '-' }}
                                     </td>
 
                                     {{-- SELESAI --}}
-                                    <td class="text-center">
+                                    <td class="text-center small text-muted">
                                         {{ $trip->end_time ? \Carbon\Carbon::parse($trip->end_time)->format('d M H:i') : '-' }}
                                     </td>
 
                                     {{-- AKSI --}}
-                                    <td>
-                                        <div class="d-grid gap-1">
+                                    <td class="text-center">
+
+                                        <div class="d-flex flex-column gap-1">
 
                                             {{-- START --}}
                                             @if ($trip->trip_status === 'waiting')
                                                 <form action="{{ route('driver.trip.start', $trip->id) }}" method="POST"
-                                                    onsubmit="return confirm('Mulai trip ini?')">
+                                                    onsubmit="return confirmAction(this,'Mulai trip ini?')">
                                                     @csrf
-                                                    <button class="btn btn-primary btn-sm w-100">
+                                                    <button class="btn btn-primary btn-sm btn-premium w-100">
                                                         ▶ Mulai
                                                     </button>
                                                 </form>
@@ -126,9 +139,10 @@
                                             {{-- COMPLETE --}}
                                             @if ($trip->trip_status === 'ongoing')
                                                 <form action="{{ route('driver.trip.complete', $trip->id) }}"
-                                                    method="POST" onsubmit="return confirm('Selesaikan trip ini?')">
+                                                    method="POST"
+                                                    onsubmit="return confirmAction(this,'Selesaikan trip ini?')">
                                                     @csrf
-                                                    <button class="btn btn-success btn-sm w-100">
+                                                    <button class="btn btn-success btn-sm btn-premium w-100">
                                                         ✔ Selesai
                                                     </button>
                                                 </form>
@@ -136,37 +150,67 @@
 
                                             {{-- DONE --}}
                                             @if ($trip->trip_status === 'completed')
-                                                <span class="text-success text-center fw-semibold">
+                                                <span class="text-success fw-semibold small">
                                                     ✔ Selesai
                                                 </span>
                                             @endif
 
                                         </div>
+
                                     </td>
 
                                 </tr>
 
-                                @empty
-                                    <tr>
-                                        <td colspan="9" class="text-center py-4">
-                                            <h6 class="text-muted">🚫 Belum ada trip</h6>
-                                        </td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
+                            @empty
+                                <tr>
+                                    <td colspan="9">
+                                        <div class="empty-state">
+                                            🚫 Belum ada trip
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforelse
 
-                        </table>
-                    </div>
-
-                    {{-- PAGINATION --}}
-                    @if (method_exists($trips, 'links'))
-                        <div class="mt-3">
-                            {{ $trips->links() }}
-                        </div>
-                    @endif
-
+                        </tbody>
+                    </table>
                 </div>
-            </div>
 
+                {{-- ================= PAGINATION ================= --}}
+                @if ($trips->hasPages())
+                    <div class="mt-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+
+                        <div class="text-muted small">
+                            Menampilkan {{ $trips->firstItem() }} - {{ $trips->lastItem() }}
+                            dari {{ $trips->total() }} data
+                        </div>
+
+                        <div>
+                            {{ $trips->links('pagination::bootstrap-5') }}
+                        </div>
+
+                    </div>
+                @endif
+
+            </div>
         </div>
-    @endsection
+
+    </div>
+@endsection
+
+@push('scripts')
+    <script>
+        function confirmAction(form, message) {
+
+            if (!confirm(message)) return false;
+
+            const btn = form.querySelector('button');
+
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = 'Processing...';
+            }
+
+            return true;
+        }
+    </script>
+@endpush

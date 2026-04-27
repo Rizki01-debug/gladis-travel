@@ -11,11 +11,16 @@ use Illuminate\Support\Facades\DB;
 class DriverController extends Controller
 {
     // ================= AUTH =================
-    private function authorizeDriver()
+    private function authorizeDriver(): void
     {
         if (!Auth::check() || Auth::user()->role_id !== 3) {
             abort(403, 'Akses ditolak');
         }
+    }
+
+    private function driverId(): int
+    {
+        return Auth::id();
     }
 
     // ================= LIST BOOKING =================
@@ -24,14 +29,18 @@ class DriverController extends Controller
         $this->authorizeDriver();
 
         $bookings = Booking::with([
-            'user',
-            'schedule.vehicle',
-            'schedule.origin',
-            'schedule.destination'
-        ])
+                'user',
+                'seats',
+                'schedule.vehicle',
+                'schedule.origin',
+                'schedule.destination'
+            ])
             ->where('status', 'pending')
+            ->whereHas('schedule.vehicle', function ($q) {
+                $q->where('driver_id', $this->driverId());
+            })
             ->latest()
-            ->get();
+            ->paginate(10);
 
         return view('driver.index', compact('bookings'));
     }
@@ -42,12 +51,17 @@ class DriverController extends Controller
         $this->authorizeDriver();
 
         $booking = Booking::with([
-            'user',
-            'schedule.vehicle',
-            'schedule.origin',
-            'schedule.destination',
-            'seats'
-        ])->findOrFail($id);
+                'user',
+                'seats',
+                'meetingPoint',
+                'schedule.vehicle',
+                'schedule.origin',
+                'schedule.destination'
+            ])
+            ->whereHas('schedule.vehicle', function ($q) {
+                $q->where('driver_id', $this->driverId());
+            })
+            ->findOrFail($id);
 
         return view('driver.show', compact('booking'));
     }
@@ -60,19 +74,15 @@ class DriverController extends Controller
         try {
             return DB::transaction(function () use ($id) {
 
-                $booking = Booking::lockForUpdate()
-                    ->with('schedule.vehicle')
+                // 🔥 FIX: filter di query (bukan setelah ambil)
+                $booking = Booking::with('schedule.vehicle')
+                    ->where('status', 'pending')
+                    ->whereHas('schedule.vehicle', function ($q) {
+                        $q->where('driver_id', $this->driverId());
+                    })
+                    ->lockForUpdate()
                     ->findOrFail($id);
 
-                if ($booking->status !== 'pending') {
-                    throw new \Exception('Booking sudah diproses.');
-                }
-
-                if (!$booking->schedule || !$booking->schedule->vehicle_id) {
-                    throw new \Exception('Schedule / kendaraan tidak valid!');
-                }
-
-                // ❗ CEK SUDAH ADA TRIP
                 if (Trip::where('booking_id', $booking->id)->exists()) {
                     throw new \Exception('Trip sudah dibuat!');
                 }
@@ -85,7 +95,7 @@ class DriverController extends Controller
                 // ✅ CREATE TRIP
                 $trip = Trip::create([
                     'booking_id' => $booking->id,
-                    'driver_id' => Auth::id(),
+                    'driver_id' => $this->driverId(),
                     'vehicle_id' => $booking->schedule->vehicle_id,
                     'trip_status' => 'waiting'
                 ]);
@@ -96,7 +106,7 @@ class DriverController extends Controller
                     ->route('driver.trips')
                     ->with('success', 'Booking diterima!');
             });
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return back()->withErrors($e->getMessage());
         }
     }
@@ -106,11 +116,11 @@ class DriverController extends Controller
     {
         $this->authorizeDriver();
 
-        $booking = Booking::findOrFail($id);
-
-        if ($booking->status !== 'pending') {
-            return back()->withErrors('Booking sudah diproses.');
-        }
+        $booking = Booking::where('status', 'pending')
+            ->whereHas('schedule.vehicle', function ($q) {
+                $q->where('driver_id', $this->driverId());
+            })
+            ->findOrFail($id);
 
         $booking->update([
             'status' => 'cancelled'
@@ -127,13 +137,15 @@ class DriverController extends Controller
         $this->authorizeDriver();
 
         $trips = Trip::with([
-            'booking.user',
-            'booking.schedule.origin',
-            'booking.schedule.destination'
-        ])
-            ->where('driver_id', Auth::id())
+                'booking.user',
+                'booking.seats',
+                'booking.meetingPoint',
+                'booking.schedule.origin',
+                'booking.schedule.destination'
+            ])
+            ->where('driver_id', $this->driverId())
             ->latest()
-            ->get();
+            ->paginate(10);
 
         return view('driver.trips.index', compact('trips'));
     }
@@ -146,7 +158,7 @@ class DriverController extends Controller
         try {
             return DB::transaction(function () use ($id) {
 
-                $trip = Trip::where('driver_id', Auth::id())
+                $trip = Trip::where('driver_id', $this->driverId())
                     ->lockForUpdate()
                     ->findOrFail($id);
 
@@ -163,7 +175,7 @@ class DriverController extends Controller
 
                 return back()->with('success', 'Perjalanan dimulai!');
             });
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return back()->withErrors($e->getMessage());
         }
     }
@@ -177,7 +189,7 @@ class DriverController extends Controller
             return DB::transaction(function () use ($id) {
 
                 $trip = Trip::with('booking')
-                    ->where('driver_id', Auth::id())
+                    ->where('driver_id', $this->driverId())
                     ->lockForUpdate()
                     ->findOrFail($id);
 
@@ -196,21 +208,11 @@ class DriverController extends Controller
                     'status' => 'completed'
                 ]);
 
-                // ✅ DRIVER EARNING (ANTI DUPLICATE)
-                DriverEarning::firstOrCreate(
-                    ['booking_id' => $trip->booking_id],
-                    [
-                        'driver_id' => $trip->driver_id,
-                        'amount' => $trip->booking->price_estimation,
-                        'status' => 'unpaid'
-                    ]
-                );
-
                 logActivity('Trip Selesai', 'Trip ID: ' . $trip->id);
 
-                return back()->with('success', 'Trip selesai & pemasukan tercatat!');
+                return back()->with('success', 'Trip selesai!');
             });
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return back()->withErrors($e->getMessage());
         }
     }
@@ -220,14 +222,12 @@ class DriverController extends Controller
     {
         $this->authorizeDriver();
 
-        $driverId = Auth::id();
-
-        $query = DriverEarning::where('driver_id', $driverId);
+        $query = DriverEarning::where('driver_id', $this->driverId());
 
         $earnings = (clone $query)
             ->with(['booking.user'])
             ->latest()
-            ->get();
+            ->paginate(10);
 
         $total = (clone $query)->sum('amount');
 

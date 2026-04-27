@@ -291,3 +291,56 @@ svg {
 .theme-option:hover .theme-box {
     transform: scale(1.08);
 }
+
+/* ================= SEAT SYSTEM FINAL ================= */
+
+/* sembunyikan checkbox */
+.seat-checkbox {
+    display: none;
+}
+
+/* base */
+.seat-box {
+    display: inline-block;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    cursor: pointer;
+    transition: 0.2s;
+    text-align: center;
+    min-width: 40px;
+}
+
+/* available */
+.seat-available {
+    border: 1px solid #0d6efd;
+    color: #0d6efd;
+}
+
+/* selected */
+.seat-checkbox:checked + .seat-box {
+    background: #0d6efd;
+    color: #fff;
+}
+
+/* driver */
+.seat-driver {
+    background: #212529;
+    color: #fff;
+}
+
+/* booked */
+.seat-booked {
+    background: #dc3545;
+    color: #fff;
+}
+
+/* disabled */
+.seat-disabled {
+    pointer-events: none;
+    opacity: 0.5;
+    cursor: not-allowed;
+    user-select: none;
+}
+
+

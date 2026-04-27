@@ -46,7 +46,7 @@ class User extends Authenticatable
     // 🔥 DRIVER → VEHICLES (INI BARU 🔥)
     public function vehicles()
     {
-        return $this->hasMany(Vehicle::class, 'driver_id');
+        return $this->hasOne(Vehicle::class, 'driver_id');
     }
 
     // 🔥 DRIVER → EARNINGS

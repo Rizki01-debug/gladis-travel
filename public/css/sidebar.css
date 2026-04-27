@@ -1,7 +1,7 @@
 /* ================= SIDEBAR BASE ================= */
 .sidebar {
     width: 250px;
-    min-height: 100vh;
+    height: 100vh; /* 🔥 full layar */
     background-color: var(--primary-color);
     color: white;
 
@@ -9,22 +9,42 @@
     top: 0;
     left: 0;
 
-    transition: transform 0.3s ease;
     z-index: 1050;
+
+    /* 🔥 scroll fix */
+    overflow-y: auto;
+    overflow-x: hidden;
+    scroll-behavior: smooth;
+
+    transition: transform 0.3s ease;
 }
 
-/* TITLE */
+/* ================= SCROLLBAR ================= */
+.sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+}
+
+/* ================= TITLE ================= */
 .sidebar h4 {
     font-weight: bold;
 }
 
-/* NAV */
+/* ================= NAV ================= */
+.sidebar .nav {
+    padding-bottom: 80px; /* 🔥 biar item bawah nggak ketutup */
+}
+
 .sidebar .nav-link {
     color: white;
     padding: 10px;
     border-radius: 8px;
     margin-bottom: 5px;
-    transition: 0.2s;
+    transition: all 0.2s ease;
 }
 
 .sidebar .nav-link:hover {
@@ -33,6 +53,7 @@
 
 .sidebar .nav-link.active {
     background-color: rgba(255, 255, 255, 0.3);
+    color: #000 !important;
 }
 
 /* ================= MOBILE ================= */
@@ -55,7 +76,7 @@
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(0,0,0,0.4);
+        background: rgba(0, 0, 0, 0.4);
         display: none;
         z-index: 1040;
     }

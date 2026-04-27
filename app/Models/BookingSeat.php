@@ -11,9 +11,15 @@ class BookingSeat extends Model
         'seat_id'
     ];
 
-    // (biar whereHas jalan)
+    // 🔥 RELASI KE BOOKING
     public function booking()
     {
         return $this->belongsTo(Booking::class);
+    }
+
+    // 🔥 RELASI KE SEAT (PENTING)
+    public function seat()
+    {
+        return $this->belongsTo(Seat::class);
     }
 }

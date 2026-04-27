@@ -91,17 +91,16 @@ class DashboardController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        // ================= TRIP =================
+        // ================= BASE QUERY =================
         $tripQuery = Trip::where('driver_id', $driverId);
+        $earningQuery = DriverEarning::where('driver_id', $driverId);
 
+        // ================= SUMMARY =================
         $totalTrip = (clone $tripQuery)->count();
 
         $completedTrip = (clone $tripQuery)
             ->where('trip_status', 'completed')
             ->count();
-
-        // ================= EARNING =================
-        $earningQuery = DriverEarning::where('driver_id', $driverId);
 
         $totalEarning = (clone $earningQuery)->sum('amount');
 
@@ -113,12 +112,34 @@ class DashboardController extends Controller
             ->where('status', 'unpaid')
             ->sum('amount');
 
+        // ================= CHART (7 HARI TERAKHIR) =================
+        $startDate = now()->subDays(6)->startOfDay();
+
+        // 🔥 TRIP CHART
+        $tripChart = Trip::selectRaw('DATE(created_at) as date, COUNT(*) as total')
+            ->where('driver_id', $driverId)
+            ->whereDate('created_at', '>=', $startDate)
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get();
+
+        // 🔥 EARNING CHART
+        $earningChart = DriverEarning::selectRaw('DATE(created_at) as date, SUM(amount) as total')
+            ->where('driver_id', $driverId)
+            ->whereDate('created_at', '>=', $startDate)
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get();
+
+        // ================= RETURN =================
         return view('dashboard.driver', compact(
             'totalTrip',
             'completedTrip',
             'totalEarning',
             'paidEarning',
-            'unpaidEarning'
+            'unpaidEarning',
+            'tripChart',
+            'earningChart'
         ));
     }
 

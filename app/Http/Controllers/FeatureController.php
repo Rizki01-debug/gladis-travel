@@ -4,31 +4,60 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Feature;
+use Illuminate\Support\Facades\Auth;
 
 class FeatureController extends Controller
 {
+    // ================= AUTH =================
+    private function authorizeAccess()
+    {
+        $user = Auth::user();
+
+        if (!$user || $user->role_id != 1) {
+            abort(403, 'Akses ditolak');
+        }
+    }
+
     // ================= INDEX =================
     public function index()
     {
-        $features = Feature::orderBy('name')->get();
+        $this->authorizeAccess();
 
-        $grouped = $features->groupBy('name');
+        // 🔥 AMBIL SEMUA FEATURE + GROUP
+        $features = Feature::orderBy('name')
+            ->orderBy('role')
+            ->get()
+            ->groupBy('name');
 
-        return view('features.index', compact('grouped'));
+        return view('features.index', [
+            'grouped' => $features
+        ]);
     }
 
-    // ================= TOGGLE =================
-    public function toggle(Request $request)
+    // ================= BULK UPDATE (SAFE VERSION) =================
+    public function bulkUpdate(Request $request)
     {
-        $feature = Feature::where('name', $request->name)
-            ->where('role', $request->role)
-            ->first();
+        $this->authorizeAccess();
 
-        if ($feature) {
-            $feature->is_active = !$feature->is_active;
-            $feature->save();
+        $request->validate([
+            'features' => 'nullable|array'
+        ]);
+
+        $submitted = $request->input('features', []);
+
+        // 🔥 AMBIL SEMUA DATA EXISTING
+        $allFeatures = Feature::all();
+
+        foreach ($allFeatures as $feature) {
+
+            // cek apakah checkbox dikirim
+            $isChecked = isset($submitted[$feature->name][$feature->role]);
+
+            $feature->update([
+                'is_active' => $isChecked ? 1 : 0
+            ]);
         }
 
-        return back()->with('success', 'Fitur berhasil diupdate');
+        return back()->with('success', 'Fitur berhasil diperbarui!');
     }
 }

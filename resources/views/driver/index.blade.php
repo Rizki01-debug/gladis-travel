@@ -1,33 +1,40 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="container">
+    <div class="container-fluid fade-in">
 
-        <h3 class="mb-4">📋 Booking Masuk</h3>
+        {{-- ================= HEADER ================= --}}
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h4 class="fw-bold mb-1">📋 Booking Masuk</h4>
+                <small class="text-muted">Daftar booking yang perlu kamu proses</small>
+            </div>
+        </div>
 
-        {{-- ALERT --}}
+        {{-- ================= ALERT ================= --}}
         @if (session('success'))
-            <div class="alert alert-success">
+            <div class="alert alert-success fade-in">
                 {{ session('success') }}
             </div>
         @endif
 
-        <div class="card shadow-sm border-0">
+        {{-- ================= CARD ================= --}}
+        <div class="card card-premium border-0">
             <div class="card-body">
 
                 <div class="table-responsive">
-                    <table class="table table-bordered align-middle table-hover">
+                    <table class="table table-premium align-middle mb-0">
 
-                        <thead class="table-light text-center">
-                            <tr>
-                                <th>ID</th>
-                                <th>Penumpang</th>
-                                <th>WA</th> {{-- 🔥 TAMBAH --}}
-                                <th>Rute</th>
+                        <thead>
+                            <tr class="text-center">
+                                <th>#</th>
+                                <th class="text-start">Penumpang</th>
+                                <th>WA</th>
+                                <th class="text-start">Rute</th>
                                 <th>Tanggal</th>
                                 <th>Kursi</th>
                                 <th>Status</th>
-                                <th width="200">Aksi</th>
+                                <th width="180">Aksi</th>
                             </tr>
                         </thead>
 
@@ -36,21 +43,24 @@
                                 <tr>
 
                                     {{-- ID --}}
-                                    <td class="text-center fw-bold">
+                                    <td class="text-center fw-semibold">
                                         #{{ $b->id }}
                                     </td>
 
                                     {{-- PENUMPANG --}}
                                     <td>
-                                        {{ $b->user->name ?? '-' }}
+                                        <div class="fw-semibold">
+                                            {{ $b->user->name ?? '-' }}
+                                        </div>
                                     </td>
 
                                     {{-- WA --}}
                                     <td class="text-center">
                                         @if ($b->phone)
                                             <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $b->phone) }}"
-                                                target="_blank" class="btn btn-success btn-sm">
-                                                💬 WA
+                                                target="_blank" class="btn btn-success btn-sm btn-premium"
+                                                title="Chat WhatsApp">
+                                                💬
                                             </a>
                                         @else
                                             <span class="text-muted">-</span>
@@ -59,9 +69,12 @@
 
                                     {{-- RUTE --}}
                                     <td>
-                                        <b>{{ optional($b->schedule->origin)->name ?? '-' }}</b>
-                                        →
-                                        <b>{{ optional($b->schedule->destination)->name ?? '-' }}</b>
+                                        <div class="fw-semibold">
+                                            {{ optional($b->schedule->origin)->name ?? '-' }}
+                                        </div>
+                                        <small class="text-muted">
+                                            → {{ optional($b->schedule->destination)->name ?? '-' }}
+                                        </small>
                                     </td>
 
                                     {{-- TANGGAL --}}
@@ -70,94 +83,121 @@
                                     </td>
 
                                     {{-- KURSI --}}
-                                    <td>
-                                        @forelse ($b->seats as $seat)
-                                            <span class="badge bg-primary">
-                                                {{ $seat->seat_number }}
-                                            </span>
-                                        @empty
+                                    <td class="text-center">
+                                        @if ($b->seats && $b->seats->count())
+                                            @foreach ($b->seats as $seat)
+                                                <span class="badge-soft bg-primary text-white">
+                                                    {{ $seat->seat_number }}
+                                                </span>
+                                            @endforeach
+                                        @else
                                             <span class="text-muted">-</span>
-                                        @endforelse
+                                        @endif
                                     </td>
 
                                     {{-- STATUS --}}
                                     <td class="text-center">
-                                        @switch($b->status)
-                                            @case('pending')
-                                                <span class="badge bg-warning text-dark">Menunggu</span>
-                                            @break
+                                        @php
+                                            $statusClass = match ($b->status) {
+                                                'pending' => 'bg-warning text-dark',
+                                                'confirmed' => 'bg-primary text-white',
+                                                'completed' => 'bg-success text-white',
+                                                'cancelled' => 'bg-danger text-white',
+                                                default => 'bg-secondary text-white',
+                                            };
+                                        @endphp
 
-                                            @case('confirmed')
-                                                <span class="badge bg-info">Dikonfirmasi</span>
-                                            @break
-
-                                            @case('completed')
-                                                <span class="badge bg-success">Selesai</span>
-                                            @break
-
-                                            @case('rejected')
-                                                <span class="badge bg-danger">Ditolak</span>
-                                            @break
-
-                                            @default
-                                                <span class="badge bg-secondary">{{ $b->status }}</span>
-                                        @endswitch
+                                        <span class="badge-soft {{ $statusClass }}">
+                                            {{ ucfirst($b->status) }}
+                                        </span>
                                     </td>
 
                                     {{-- AKSI --}}
-                                    <td>
-                                        <div class="d-flex flex-wrap gap-1 justify-content-center">
+                                    <td class="text-center">
+
+                                        <div class="d-flex flex-wrap justify-content-center gap-1">
 
                                             {{-- DETAIL --}}
-                                            <a href="{{ route('driver.show', $b->id) }}" class="btn btn-info btn-sm">
-                                                Detail
+                                            <a href="{{ route('driver.show', $b->id) }}"
+                                                class="btn btn-info btn-sm btn-premium">
+                                                👁
                                             </a>
 
-                                            {{-- AKSI CEPAT --}}
-                                            @if ($b->status == 'pending')
+                                            {{-- ACTION --}}
+                                            @if ($b->status === 'pending')
+                                                {{-- CONFIRM --}}
                                                 <form action="{{ route('driver.confirm', $b->id) }}" method="POST"
-                                                    onsubmit="return confirm('Konfirmasi booking ini?')">
+                                                    onsubmit="return confirmAction(this,'Terima booking ini?')">
                                                     @csrf
-                                                    <button class="btn btn-success btn-sm">
+                                                    <button class="btn btn-success btn-sm btn-premium">
                                                         ✔
                                                     </button>
                                                 </form>
 
+                                                {{-- REJECT --}}
                                                 <form action="{{ route('driver.reject', $b->id) }}" method="POST"
-                                                    onsubmit="return confirm('Tolak booking ini?')">
+                                                    onsubmit="return confirmAction(this,'Tolak booking ini?')">
                                                     @csrf
-                                                    <button class="btn btn-danger btn-sm">
+                                                    <button class="btn btn-danger btn-sm btn-premium">
                                                         ✖
                                                     </button>
                                                 </form>
                                             @endif
 
                                         </div>
+
                                     </td>
 
                                 </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="8">
+                                        <div class="empty-state">
+                                            🚫 Tidak ada booking masuk
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
 
-                                @empty
-                                    <tr>
-                                        <td colspan="8" class="text-center py-4">
-                                            <h5 class="text-muted">🚫 Tidak ada booking</h5>
-                                        </td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-
-                        </table>
-                    </div>
-
-                    {{-- PAGINATION --}}
-                    @if (method_exists($bookings, 'links'))
-                        <div class="mt-3">
-                            {{ $bookings->links() }}
-                        </div>
-                    @endif
-
+                    </table>
                 </div>
-            </div>
 
+                {{-- ================= PAGINATION ================= --}}
+                @if ($bookings->hasPages())
+                    <div class="mt-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+
+                        <div class="text-muted small">
+                            Menampilkan {{ $bookings->firstItem() }} - {{ $bookings->lastItem() }}
+                            dari {{ $bookings->total() }} data
+                        </div>
+
+                        <div>
+                            {{ $bookings->links('pagination::bootstrap-5') }}
+                        </div>
+
+                    </div>
+                @endif
+
+            </div>
         </div>
-    @endsection
+
+    </div>
+@endsection
+
+@push('scripts')
+    <script>
+        function confirmAction(form, message) {
+
+            if (!confirm(message)) return false;
+
+            const btn = form.querySelector('button');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = '...';
+            }
+
+            return true;
+        }
+    </script>
+@endpush

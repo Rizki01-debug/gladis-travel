@@ -12,6 +12,7 @@ use Database\Seeders\PassengerSeeder;
 use Database\Seeders\FeatureSeeder;
 use Database\Seeders\VehicleSeeder;
 use Database\Seeders\SeatSeeder;
+use Database\Seeders\LandingSeeder;
 
 class DatabaseSeeder extends Seeder
 {
@@ -30,6 +31,7 @@ class DatabaseSeeder extends Seeder
             FeatureSeeder::class,
             VehicleSeeder::class,
             SeatSeeder::class,
+            LandingSeeder::class,
         ]);
     }
 }

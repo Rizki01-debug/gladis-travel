@@ -135,37 +135,52 @@ class FinanceController extends Controller
         $start = $request->start_date;
         $end = $request->end_date;
 
+        // ================= VALIDASI TANGGAL =================
         if ($start && $end && $start > $end) {
             return back()->withErrors('Tanggal tidak valid');
         }
 
-        $transactions = Transaction::where('type', 'income')
-            ->where('status', 'paid')
-            ->when(
-                $start && $end,
-                fn($q) =>
-                $q->whereBetween('created_at', [$start, $end])
-            )
-            ->latest()
-            ->get();
+        // ================= QUERY BASE =================
+        $transactionQuery = Transaction::where('type', 'income')
+            ->where('status', 'paid');
 
-        $expenses = Expense::when(
-            $start && $end,
-            fn($q) =>
-            $q->whereBetween('expense_date', [$start, $end])
-        )
-            ->latest()
-            ->get();
+        $expenseQuery = Expense::query();
 
-        return view('finance.report', [
-            'transactions' => $transactions,
-            'expenses' => $expenses,
-            'totalIncome' => $transactions->sum('amount'),
-            'totalExpense' => $expenses->sum('amount'),
-            'balance' => $transactions->sum('amount') - $expenses->sum('amount'),
-            'start' => $start,
-            'end' => $end
-        ]);
+        // ================= FILTER =================
+        if ($start && $end) {
+            $transactionQuery->whereBetween('created_at', [
+                $start . ' 00:00:00',
+                $end . ' 23:59:59'
+            ]);
+
+            $expenseQuery->whereBetween('expense_date', [$start, $end]);
+        }
+
+        // ================= PAGINATION =================
+        $transactions = $transactionQuery
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
+
+        $expenses = $expenseQuery
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
+
+        // ================= SUMMARY (AMBIL DARI QUERY, BUKAN PAGINATE) =================
+        $totalIncome = (clone $transactionQuery)->sum('amount');
+        $totalExpense = (clone $expenseQuery)->sum('amount');
+        $balance = $totalIncome - $totalExpense;
+
+        return view('finance.report', compact(
+            'transactions',
+            'expenses',
+            'totalIncome',
+            'totalExpense',
+            'balance',
+            'start',
+            'end'
+        ));
     }
 
     // ================= EXPORT PDF =================

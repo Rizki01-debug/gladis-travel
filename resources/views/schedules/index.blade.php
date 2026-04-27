@@ -1,46 +1,112 @@
 @extends('layouts.app')
 
 @section('content')
-    <h3>Jadwal Keberangkatan</h3>
+    <div class="container-fluid">
 
-    <a href="{{ route('schedules.create') }}" class="btn btn-primary mb-3">
-        + Tambah Jadwal
-    </a>
+        {{-- HEADER --}}
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h4 class="fw-bold">🚐 Jadwal Keberangkatan</h4>
+                <small class="text-muted">Kelola rute dan jadwal travel</small>
+            </div>
 
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th>Rute</th>
-                <th>Kendaraan</th>
-                <th>Jam</th>
-                <th>Rute Map</th>
-                <th>Jarak</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach ($schedules as $s)
-                <tr>
-                    <td>
-                        {{ $s->origin->name ?? '-' }} → {{ $s->destination->name ?? '-' }}
-                    </td>
-                    <td>{{ $s->vehicle->name ?? '-' }}</td>
-                    <td>{{ $s->departure_time }}</td>
-                    <td>
-                        <button class="btn btn-sm btn-info" onclick="showRoute({{ $s->id }})">
-                            Lihat Rute
-                        </button>
-                    </td>
+            <a href="{{ route('schedules.create') }}" class="btn btn-primary">
+                ➕ Tambah Jadwal
+            </a>
+        </div>
 
-                    <td>
-                        {{ $s->distance_km ?? 0 }} KM
-                    </td>
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
+        {{-- TABLE --}}
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
 
-    {{-- MAP --}}
-    <div id="map" style="height: 400px;" class="mt-4"></div>
+                <div class="table-responsive">
+                    <table class="table align-middle">
+
+                        <thead class="table-light text-center">
+                            <tr>
+                                <th>Rute</th>
+                                <th>Kendaraan</th>
+                                <th>Jam</th>
+                                <th>Map</th>
+                                <th>Jarak</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            @forelse ($schedules as $s)
+                                <tr>
+                                    <td>
+                                        <b>{{ $s->origin->name ?? '-' }}</b><br>
+                                        <small>→ {{ $s->destination->name ?? '-' }}</small>
+                                    </td>
+
+                                    <td class="text-center">
+                                        {{ $s->vehicle->name ?? '-' }}
+                                    </td>
+
+                                    <td class="text-center">
+                                        {{ $s->formatted_time ?? '-' }}
+                                    </td>
+
+                                    <td class="text-center">
+                                        <button class="btn btn-info btn-sm" onclick="showRoute({{ $s->id }})">
+                                            Lihat
+                                        </button>
+                                    </td>
+
+                                    <td class="text-center text-primary fw-bold" id="distance-{{ $s->id }}">
+                                        -
+                                    </td>
+
+                                    {{-- 🔥 CRUD --}}
+                                    <td class="text-center">
+                                        <a href="{{ route('schedules.edit', $s->id) }}" class="btn btn-warning btn-sm">
+                                            ✏️
+                                        </a>
+
+                                        <form action="{{ route('schedules.destroy', $s->id) }}" method="POST"
+                                            class="d-inline">
+                                            @csrf
+                                            @method('DELETE')
+
+                                            <button class="btn btn-danger btn-sm" onclick="return confirm('Hapus jadwal?')">
+                                                🗑️
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">
+                                        🚫 Belum ada jadwal
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+
+                    </table>
+                </div>
+
+                {{-- PAGINATION --}}
+                @if ($schedules->hasPages())
+                    <div class="mt-3">
+                        {{ $schedules->links('pagination::bootstrap-5') }}
+                    </div>
+                @endif
+
+            </div>
+        </div>
+
+        {{-- MAP --}}
+        <div class="card mt-4 border-0 shadow-sm">
+            <div class="card-body">
+                <h6>🗺 Preview Rute</h6>
+                <div id="map" style="height:400px;"></div>
+            </div>
+        </div>
+
+    </div>
 @endsection
 
 
@@ -48,65 +114,128 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 @endpush
 
+
 @push('scripts')
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
     <script>
         document.addEventListener("DOMContentLoaded", function() {
 
-            // 🔥 INIT MAP
-            var map = L.map('map').setView([-6.2, 106.8], 8);
+            const map = L.map('map').setView([-6.2, 106.8], 8);
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap'
             }).addTo(map);
 
-            // 🔥 DATA DARI LARAVEL
-            var schedules = @json($schedules);
+            const schedules = @json($schedules->items());
 
-            window.showRoute = function(scheduleId) {
+            let markers = [];
+            let polyline = null;
 
-                // 🔥 HAPUS MARKER & LINE (JANGAN HAPUS TILE)
-                map.eachLayer(function(layer) {
-                    if (layer instanceof L.Marker || layer instanceof L.Polyline) {
-                        map.removeLayer(layer);
-                    }
+            // 🔥 CACHE (ANTI LAG)
+            let routeCache = {};
+
+            function clearMap() {
+                markers.forEach(m => map.removeLayer(m));
+                markers = [];
+
+                if (polyline) {
+                    map.removeLayer(polyline);
+                    polyline = null;
+                }
+            }
+
+            function setDistance(id, value) {
+                const el = document.getElementById('distance-' + id);
+                if (el) el.innerHTML = value;
+            }
+
+            function drawRoute(route, id) {
+
+                const latlngs = route.geometry.coordinates.map(c => [c[1], c[0]]);
+
+                polyline = L.polyline(latlngs, {
+                    weight: 5
+                }).addTo(map);
+
+                map.fitBounds(polyline.getBounds(), {
+                    padding: [40, 40]
                 });
 
-                var schedule = schedules.find(s => s.id === scheduleId);
+                // 🔥 MARKER HEMAT (CUMA START & END)
+                const start = latlngs[0];
+                const end = latlngs[latlngs.length - 1];
 
-                if (!schedule || !schedule.route_points || schedule.route_points.length === 0) {
-                    alert('Rute belum tersedia!');
+                markers.push(L.marker(start).addTo(map).bindPopup("Start"));
+                markers.push(L.marker(end).addTo(map).bindPopup("End"));
+
+                const km = (route.distance / 1000).toFixed(1);
+                setDistance(id, km + " KM");
+            }
+
+            window.showRoute = async function(id) {
+
+                clearMap();
+
+                // 🔥 CACHE CHECK
+                if (routeCache[id]) {
+                    drawRoute(routeCache[id], id);
                     return;
                 }
 
-                var latlngs = [];
+                const schedule = schedules.find(s => s.id == id);
 
-                schedule.route_points.forEach(function(rp) {
+                if (!schedule || !schedule.route_points) {
+                    alert("Rute tidak tersedia");
+                    return;
+                }
 
-                    var point = rp.meeting_point;
+                const sorted = schedule.route_points.sort((a, b) => a.order - b.order);
 
-                    if (point && point.latitude && point.longitude) {
+                let coords = [];
 
-                        var lat = parseFloat(point.latitude);
-                        var lng = parseFloat(point.longitude);
+                sorted.forEach(rp => {
+                    let p = rp.meeting_point;
 
-                        latlngs.push([lat, lng]);
-
-                        L.marker([lat, lng])
-                            .addTo(map)
-                            .bindPopup(`<b>${point.name}</b>`);
+                    if (p && p.latitude && p.longitude) {
+                        coords.push(`${p.longitude},${p.latitude}`);
                     }
                 });
 
-                if (latlngs.length > 0) {
-                    var polyline = L.polyline(latlngs, {
-                        weight: 5
-                    }).addTo(map);
-
-                    map.fitBounds(polyline.getBounds());
+                if (coords.length < 2) {
+                    alert("Minimal 2 titik");
+                    return;
                 }
-            }
+
+                try {
+
+                    const url =
+                        `https://router.project-osrm.org/route/v1/driving/${coords.join(';')}?overview=simplified&geometries=geojson`;
+
+                    const res = await fetch(url);
+                    const data = await res.json();
+
+                    if (!data.routes.length) {
+                        alert("Rute tidak ditemukan");
+                        return;
+                    }
+
+                    const route = data.routes[0];
+
+                    // 🔥 SIMPAN CACHE
+                    routeCache[id] = route;
+
+                    drawRoute(route, id);
+
+                } catch (err) {
+                    console.error(err);
+                    alert("Gagal ambil rute");
+                }
+            };
+
+            setTimeout(() => {
+                map.invalidateSize();
+            }, 300);
 
         });
     </script>
