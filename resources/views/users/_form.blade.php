@@ -2,8 +2,11 @@
     <div class="card-body">
 
         @php
-            $isEdit = isset($user);
-            $selectedVehicleId = old('vehicle_id', optional($user->vehicle)->id ?? '');
+            // 🔥 AMANKAN USER (CREATE MODE)
+            $user = $user ?? null;
+
+            $isEdit = !is_null($user);
+            $selectedVehicleId = old('vehicle_id', optional($user?->vehicle)->id ?? '');
         @endphp
 
         {{-- ================= NAME ================= --}}
@@ -12,7 +15,7 @@
             <input type="text"
                    name="name"
                    class="form-control @error('name') is-invalid @enderror"
-                   value="{{ old('name', $user->name ?? '') }}"
+                   value="{{ old('name', $user?->name) }}"
                    required>
 
             @error('name')
@@ -26,7 +29,7 @@
             <input type="email"
                    name="email"
                    class="form-control @error('email') is-invalid @enderror"
-                   value="{{ old('email', $user->email ?? '') }}"
+                   value="{{ old('email', $user?->email) }}"
                    required>
 
             @error('email')
@@ -66,7 +69,7 @@
                 @foreach ($roles as $role)
                     <option value="{{ $role->id }}"
                         data-role="{{ strtolower($role->name) }}"
-                        {{ old('role_id', $user->role_id ?? '') == $role->id ? 'selected' : '' }}>
+                        {{ old('role_id', $user?->role_id) == $role->id ? 'selected' : '' }}>
                         {{ ucfirst($role->name) }}
                     </option>
                 @endforeach
@@ -121,7 +124,7 @@
 
     function toggleVehicleField() {
         const selectedOption = roleSelect.options[roleSelect.selectedIndex];
-        const roleName = selectedOption.dataset.role;
+        const roleName = selectedOption?.dataset?.role;
 
         if (roleName === 'driver') {
             vehicleField.classList.remove('d-none');
@@ -132,6 +135,5 @@
 
     roleSelect.addEventListener('change', toggleVehicleField);
 
-    // 🔥 AUTO TRIGGER SAAT EDIT / OLD VALUE
     window.addEventListener('load', toggleVehicleField);
 </script>

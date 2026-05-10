@@ -11,13 +11,6 @@
             </div>
         </div>
 
-        {{-- ================= ALERT ================= --}}
-        @if (session('success'))
-            <div class="alert alert-success fade-in">
-                {{ session('success') }}
-            </div>
-        @endif
-
         {{-- ================= CARD ================= --}}
         <div class="card card-premium border-0">
             <div class="card-body">

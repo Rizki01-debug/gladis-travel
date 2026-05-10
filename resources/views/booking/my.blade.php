@@ -11,13 +11,6 @@
             </div>
         </div>
 
-        {{-- ================= ALERT ================= --}}
-        @if (session('success'))
-            <div class="alert alert-success fade-in">
-                {{ session('success') }}
-            </div>
-        @endif
-
         {{-- ================= TAB STATUS ================= --}}
         <div class="mb-3 d-flex gap-2 flex-wrap">
             @php

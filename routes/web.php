@@ -19,6 +19,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\Admin\SectionController;
 use App\Http\Controllers\Admin\WebSettingController;
+use App\Http\Controllers\PassengerProfileController;
 
 /*
 |--------------------------------------------------------------------------
@@ -38,32 +39,58 @@ Route::get('/preview', [LandingController::class, 'preview'])
 Route::post('/preview', [LandingController::class, 'storePreview'])
     ->name('landing.preview.store');
 
-
 /*
 |--------------------------------------------------------------------------
 | AUTH USER (PASSENGER FLOW)
 |--------------------------------------------------------------------------
 */
+Route::middleware(['auth'])->group(function () {
 
-Route::middleware('auth')->group(function () {
-
-    // 🔥 setelah login → ke dashboard (role passenger / role 4)
+    // ================= REDIRECT =================
     Route::get('/booking', function () {
-        return redirect()->route('dashboard');
+        return redirect()->route('dashboard.user');
     })->name('booking.redirect');
+
+
+    // ================= PROFILE (PASSENGER) =================
+    Route::prefix('passenger/profile')
+        ->name('passenger.profile.')
+        ->group(function () {
+
+            // 🔥 halaman profile
+            Route::get('/', [PassengerProfileController::class, 'edit'])
+                ->name('index');
+
+            // 🔥 update profile
+            Route::post('/', [PassengerProfileController::class, 'update'])
+                ->name('update');
+        });
+
 });
 
+/*
+|--------------------------------------------------------------------------
+| ADMIN (SUPER ADMIN ONLY)
+|--------------------------------------------------------------------------
+*/
+
 Route::prefix('admin')
-    ->middleware(['auth', 'role:1']) // super admin
+    ->middleware(['auth', 'role:1'])
     ->name('admin.')
     ->group(function () {
 
+        // ================= CMS SECTION =================
         Route::resource('sections', SectionController::class);
+
         Route::patch('sections/{section}/toggle', [SectionController::class, 'toggle'])
             ->name('sections.toggle');
 
-        Route::get('settings', [WebSettingController::class, 'edit'])->name('settings.edit');
-        Route::post('settings', [WebSettingController::class, 'update'])->name('settings.update');
+        // ================= WEB SETTINGS =================
+        Route::get('settings', [WebSettingController::class, 'edit'])
+            ->name('settings.edit');
+
+        Route::post('settings', [WebSettingController::class, 'update'])
+            ->name('settings.update');
     });
 
 /*

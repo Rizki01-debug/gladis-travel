@@ -62,22 +62,46 @@ class DepartureScheduleController extends Controller
     {
         $this->authorizeAccess();
 
+        // 🔥 decode JSON route_points
+        $points = json_decode($request->route_points, true);
+
+        if (!is_array($points) || count($points) < 2) {
+            return back()
+                ->withErrors('Minimal pilih 2 titik rute!')
+                ->withInput();
+        }
+
         $validated = $request->validate([
             'origin_city_id' => 'required|exists:cities,id',
             'destination_city_id' => 'required|different:origin_city_id|exists:cities,id',
             'vehicle_id' => 'required|exists:vehicles,id',
             'departure_time' => 'required|date_format:H:i',
-
-            'route_points' => 'required|array|min:2',
-            'route_points.*' => 'distinct|exists:meeting_points,id'
         ]);
+
+        // 🔥 VALIDASI MEETING POINT EXIST
+        foreach ($points as $p) {
+            if (!MeetingPoint::where('id', $p)->exists()) {
+                return back()->withErrors('Meeting point tidak valid!')->withInput();
+            }
+        }
+
+        // 🔥 VALIDASI DUPLICATE
+        $exists = DepartureSchedule::where('vehicle_id', $validated['vehicle_id'])
+            ->where('departure_time', $validated['departure_time'])
+            ->exists();
+
+        if ($exists) {
+            return back()
+                ->withErrors('Jadwal untuk kendaraan dan jam tersebut sudah ada!')
+                ->withInput();
+        }
 
         try {
             DB::beginTransaction();
 
             $schedule = DepartureSchedule::create($validated);
 
-            $this->syncRoutePoints($schedule->id, $validated['route_points']);
+            $this->syncRoutePoints($schedule->id, $points);
 
             DB::commit();
 
@@ -116,25 +140,43 @@ class DepartureScheduleController extends Controller
 
         $schedule = DepartureSchedule::findOrFail($id);
 
+        // 🔥 decode JSON
+        $points = json_decode($request->route_points, true);
+
+        if (!is_array($points) || count($points) < 2) {
+            return back()
+                ->withErrors('Minimal pilih 2 titik rute!')
+                ->withInput();
+        }
+
         $validated = $request->validate([
             'origin_city_id' => 'required|exists:cities,id',
             'destination_city_id' => 'required|different:origin_city_id|exists:cities,id',
             'vehicle_id' => 'required|exists:vehicles,id',
             'departure_time' => 'required|date_format:H:i',
-
-            'route_points' => 'required|array|min:2',
-            'route_points.*' => 'distinct|exists:meeting_points,id'
         ]);
+
+        // 🔥 VALIDASI DUPLICATE (exclude diri sendiri)
+        $exists = DepartureSchedule::where('vehicle_id', $validated['vehicle_id'])
+            ->where('departure_time', $validated['departure_time'])
+            ->where('id', '!=', $schedule->id)
+            ->exists();
+
+        if ($exists) {
+            return back()
+                ->withErrors('Jadwal dengan kendaraan dan jam tersebut sudah digunakan!')
+                ->withInput();
+        }
 
         try {
             DB::beginTransaction();
 
             $schedule->update($validated);
 
-            // 🔥 RESET ROUTE POINT
+            // reset route
             RoutePoint::where('schedule_id', $schedule->id)->delete();
 
-            $this->syncRoutePoints($schedule->id, $validated['route_points']);
+            $this->syncRoutePoints($schedule->id, $points);
 
             DB::commit();
 
@@ -162,7 +204,6 @@ class DepartureScheduleController extends Controller
             DB::beginTransaction();
 
             RoutePoint::where('schedule_id', $schedule->id)->delete();
-
             $schedule->delete();
 
             DB::commit();

@@ -13,7 +13,6 @@ class SuperAdminSeeder extends Seeder
         User::create([
             'name' => 'Super Admin',
             'email' => 'superadmin@gladis.com',
-            'phone' => '08123456789',
             'role_id' => 1, // super_admin
             'password' => Hash::make('password'),
         ]);

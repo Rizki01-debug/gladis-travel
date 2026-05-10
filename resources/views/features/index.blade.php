@@ -15,13 +15,6 @@
         <small class="text-muted">Atur akses fitur berdasarkan role</small>
     </div>
 
-    {{-- ================= ALERT ================= --}}
-    @if(session('success'))
-        <div class="alert alert-success">
-            {{ session('success') }}
-        </div>
-    @endif
-
     <form method="POST" action="{{ route('features.bulkUpdate') }}">
         @csrf
 

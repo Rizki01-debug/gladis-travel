@@ -14,8 +14,12 @@ class AuthenticatedSessionController extends Controller
     /**
      * Display login page
      */
-    public function create(): View
+    public function create(): RedirectResponse|View
     {
+        if (Auth::check()) {
+            return redirect()->route($this->redirectTo(Auth::user()->role_id));
+        }
+
         return view('auth.login');
     }
 
@@ -24,6 +28,11 @@ class AuthenticatedSessionController extends Controller
      */
     public function store(LoginRequest $request): RedirectResponse
     {
+
+        // 🔥 force logout user lama
+        if (Auth::check()) {
+            Auth::logout();
+        }
         $request->authenticate();
 
         $request->session()->regenerate();

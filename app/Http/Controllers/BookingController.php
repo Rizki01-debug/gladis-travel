@@ -227,10 +227,10 @@ class BookingController extends Controller
                 $totalRaw = $pricePerSeat * count($validated['seat_id']);
                 $serverPrice = ceil($totalRaw / 1000) * 1000;
 
-                // ================= ANTI MANIPULASI =================
-                if (abs($serverPrice - $frontendPrice) > 10000) {
-                    throw new \Exception('Harga tidak valid (terdeteksi manipulasi)');
-                }
+                // // ================= ANTI MANIPULASI =================
+                // if (abs($serverPrice - $frontendPrice) > 10000) {
+                //     throw new \Exception('Harga tidak valid (terdeteksi manipulasi)');
+                // }
 
                 // ================= CREATE BOOKING =================
                 $booking = Booking::create([

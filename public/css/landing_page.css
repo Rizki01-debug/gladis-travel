@@ -1,0 +1,405 @@
+/* ===============================
+   GLOBAL / DESIGN SYSTEM
+================================= */
+
+:root {
+    --primary: #004b8d;
+    --secondary: #006399;
+    --tertiary: #ffb68d;
+
+    --bg: #f7f9fb;
+    --surface: #ffffff;
+    --surface-soft: #f2f4f6;
+
+    --text-main: #191c1e;
+    --text-muted: #6c757d;
+
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+
+    --shadow-soft: 0 8px 32px rgba(0, 75, 141, 0.08);
+    --shadow-lg: 0 32px 64px rgba(0, 75, 141, 0.08);
+}
+
+body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text-main);
+}
+
+/* ===============================
+   NAVBAR
+================================= */
+
+.navbar-custom {
+    backdrop-filter: blur(12px);
+    background: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 16px 40px rgba(0,0,0,0.05);
+    transition: 0.3s;
+}
+
+.navbar-brand {
+    font-weight: 800;
+    color: var(--primary) !important;
+    letter-spacing: -0.5px;
+}
+
+/* ===============================
+   HERO
+================================= */
+
+.hero-section {
+    position: relative;
+    min-height: 90vh;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+}
+
+.hero-bg img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, rgba(0,52,101,0.4), #f7f9fb);
+}
+
+.hero-content h1 {
+    font-size: 56px;
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--primary);
+}
+
+.hero-content span {
+    color: var(--tertiary);
+}
+
+.hero-content p {
+    color: var(--text-muted);
+    font-size: 18px;
+}
+
+/* ===============================
+   SEARCH CARD
+================================= */
+
+.search-card {
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(20px);
+    border-radius: var(--radius-xl);
+    padding: 32px;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid rgba(255,255,255,0.3);
+}
+
+.search-card input {
+    border-radius: 16px;
+    padding: 14px 16px;
+    border: none;
+    background: var(--surface-soft);
+}
+
+.search-card input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0,75,141,0.2);
+}
+
+/* ===============================
+   BUTTON
+================================= */
+
+.btn-primary-custom {
+    background: var(--primary);
+    border: none;
+    border-radius: 999px;
+    padding: 12px 24px;
+    font-weight: 600;
+    transition: 0.3s;
+}
+
+.btn-primary-custom:hover {
+    background: #003465;
+}
+
+.btn-secondary-custom {
+    background: #e6f0ff;
+    color: var(--primary);
+    border-radius: 999px;
+    padding: 10px 20px;
+    font-weight: 600;
+}
+
+/* ===============================
+   SECTION
+================================= */
+
+.section {
+    padding: 100px 0;
+}
+
+.section-title {
+    font-size: 40px;
+    font-weight: 800;
+    color: var(--primary);
+}
+
+.section-subtitle {
+    color: var(--text-muted);
+}
+
+/* ===============================
+   DESTINATION CARD
+================================= */
+
+.destination-card {
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    position: relative;
+}
+
+.destination-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: 0.6s;
+}
+
+.destination-card:hover img {
+    transform: scale(1.05);
+}
+
+.price-badge {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    background: var(--tertiary);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* ===============================
+   SCHEDULE TABLE
+================================= */
+
+.schedule-wrapper {
+    background: white;
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    box-shadow: var(--shadow-soft);
+}
+
+.schedule-header {
+    background: var(--primary);
+    color: white;
+    font-size: 12px;
+    text-transform: uppercase;
+    padding: 16px;
+    font-weight: 600;
+}
+
+.schedule-item {
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+    transition: 0.3s;
+}
+
+.schedule-item:hover {
+    background: var(--surface-soft);
+}
+
+.badge-success-custom {
+    background: #d1f7e1;
+    color: #198754;
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 12px;
+}
+
+.badge-danger-custom {
+    background: #ffe2e2;
+    color: #dc3545;
+    border-radius: 999px;
+    padding: 5px 12px;
+    font-size: 12px;
+}
+
+/* ===============================
+   FEATURES
+================================= */
+
+.feature-box {
+    text-align: center;
+}
+
+.feature-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 16px;
+    background: #e6f0ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+/* ===============================
+   TESTIMONIAL
+================================= */
+
+.testimonial-section {
+    background: var(--primary);
+    color: white;
+    position: relative;
+}
+
+.testimonial-card {
+    background: rgba(255,255,255,0.08);
+    border-radius: var(--radius-xl);
+    padding: 24px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.testimonial-card img {
+    border-radius: 50%;
+}
+
+/* ===============================
+   CTA
+================================= */
+
+.cta-section {
+    background: linear-gradient(135deg, #0d6efd, #6610f2);
+    color: white;
+    text-align: center;
+    padding: 80px 0;
+}
+
+.cta-section h2 {
+    font-weight: 800;
+}
+
+/* ===============================
+   FOOTER (FINAL UPGRADE)
+================================= */
+
+.footer-custom {
+    background: linear-gradient(180deg, #0f172a, #020617);
+    color: white;
+    padding: 80px 0 40px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* subtle glow background */
+.footer-custom::before {
+    content: "";
+    position: absolute;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(0,75,141,0.25), transparent);
+    top: -100px;
+    right: -100px;
+    z-index: 0;
+}
+
+/* container fix */
+.footer-custom .container {
+    position: relative;
+    z-index: 1;
+}
+
+/* brand title */
+.footer-brand {
+    font-weight: 800;
+    font-size: 20px;
+    color: white;
+    margin-bottom: 10px;
+}
+
+/* description */
+.footer-desc {
+    color: #94a3b8;
+    font-size: 14px;
+    max-width: 400px;
+}
+
+/* links */
+.footer-links a {
+    display: block;
+    color: #9ca3af;
+    text-decoration: none;
+    margin-bottom: 8px;
+    font-size: 14px;
+    transition: 0.3s;
+}
+
+.footer-links a:hover {
+    color: white;
+    transform: translateX(3px);
+}
+
+/* divider */
+.footer-divider {
+    border-top: 1px solid rgba(255,255,255,0.1);
+    margin: 40px 0 20px;
+}
+
+/* bottom text */
+.footer-bottom {
+    font-size: 13px;
+    color: #6b7280;
+}
+
+/* ===============================
+   FIX BUTTON TEXT (WAJIB)
+================================= */
+
+/* Semua tombol primary */
+.btn-primary {
+    color: #ffffff !important;
+    font-weight: 600;
+}
+
+/* Hover tetap putih */
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+    color: #ffffff !important;
+}
+
+/* Navbar Login Button */
+.navbar .btn-primary {
+    color: #ffffff !important;
+}
+
+/* Hero Button */
+.hero-section .btn,
+.hero-content .btn {
+    color: #ffffff !important;
+}
+
+/* Custom Button kamu */
+.btn-primary-custom {
+    color: #ffffff !important;
+}
+
+/* ===============================
+   TESTIMONIAL AVATAR
+================================= */
+
+.testimonial-avatar {
+    width: 55px;
+    height: 55px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 3px solid rgba(255,255,255,0.2);
+}

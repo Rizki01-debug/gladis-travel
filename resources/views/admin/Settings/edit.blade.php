@@ -10,11 +10,6 @@
         <small class="text-muted">Atur identitas website (branding global)</small>
     </div>
 
-    {{-- ================= ALERT ================= --}}
-    @if(session('success'))
-        <div class="alert alert-success">{{ session('success') }}</div>
-    @endif
-
     {{-- ================= ERROR ================= --}}
     @if ($errors->any())
         <div class="alert alert-danger">

@@ -15,13 +15,6 @@
             </a>
         </div>
 
-        {{-- ================= ALERT ================= --}}
-        @if (session('success'))
-            <div class="alert alert-success fade-in">
-                {{ session('success') }}
-            </div>
-        @endif
-
         {{-- ================= FILTER ================= --}}
         <div class="card card-premium p-3 border-0 mb-3">
             <form method="GET">

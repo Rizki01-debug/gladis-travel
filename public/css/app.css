@@ -71,7 +71,7 @@ body {
     vertical-align: middle;
     padding: 14px;
     border-color: var(--border-color);
-    font-size: 14px;
+    font-size: 18px;
 }
 
 .table-premium tbody tr {
@@ -109,7 +109,7 @@ body {
 .badge-soft {
     padding: 6px 12px;
     border-radius: 20px;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 500;
 }
 

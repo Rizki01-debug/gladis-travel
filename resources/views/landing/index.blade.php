@@ -8,7 +8,7 @@
     $schedule = $sections->firstWhere('key', 'schedule');
     $features = $sections->firstWhere('key', 'features');
     $testimonials = $sections->firstWhere('key', 'testimonials');
-    $cta = $sections->firstWhere('key', 'cta'); // 🔥 TAMBAHAN
+    $cta = $sections->firstWhere('key', 'cta');
 
     function extra($section, $key, $default = []) {
         return data_get($section, "extra.$key", $default);
@@ -17,78 +17,68 @@
     function img($path) {
         if (empty($path)) return asset('default.jpg');
         if (str_starts_with($path, 'http')) return $path;
-
         return asset('storage/' . $path);
     }
 @endphp
 
-{{-- ================= NAVBAR ================= --}}
-<nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm fixed-top">
-    <div class="container">
-
-        <a class="navbar-brand d-flex align-items-center gap-2" href="#">
-            @if(setting('logo'))
-                <img src="{{ img(setting('logo')) }}" height="40">
-            @endif
-
-            <span class="fw-bold text-primary">
-                {{ setting('app_name', 'GLADIS') }}
-            </span>
-        </a>
-
-        <div class="ms-auto">
-            <a href="{{ route('login') }}" class="btn btn-primary">
-                Login
-            </a>
-        </div>
-
-    </div>
-</nav>
-
 {{-- ================= HERO ================= --}}
 @if($hero)
-<section class="vh-100 d-flex align-items-center text-white position-relative"
-    style="background: url('{{ img($hero->image) }}') center/cover;">
+<section class="hero-section">
 
-    <div class="position-absolute top-0 start-0 w-100 h-100 bg-dark opacity-50"></div>
-
-    <div class="container text-center position-relative">
-        <h1 class="display-4 fw-bold mb-3">
-            {{ $hero->title ?? 'Travel Mudah & Nyaman' }}
-        </h1>
-
-        <p class="lead mb-4">
-            {{ $hero->content ?? 'Pesan travel dengan cepat dan nyaman.' }}
-        </p>
-
-        <a href="{{ route('login') }}" class="btn btn-lg btn-primary">
-            {{ extra($hero, 'button_text', 'Mulai Sekarang') }}
-        </a>
+    <div class="hero-bg position-absolute w-100 h-100">
+        <img src="{{ img($hero->image) }}">
+        <div class="hero-overlay"></div>
     </div>
+
+    <div class="container position-relative">
+        <div class="row align-items-center">
+
+            <div class="col-lg-6 hero-content">
+                <h1>
+                    {{ $hero->title ?? 'Travel Mudah & Nyaman' }}
+                </h1>
+
+                <p class="mt-3 mb-4">
+                    {{ $hero->content ?? 'Pesan travel dengan cepat dan nyaman.' }}
+                </p>
+
+                <a href="{{ route('login') }}" class="btn btn-primary-custom">
+                    {{ extra($hero, 'button_text', 'Mulai Sekarang') }}
+                </a>
+            </div>
+
+        </div>
+    </div>
+
 </section>
 @endif
 
 {{-- ================= DESTINATIONS ================= --}}
 @if($dest && $dest->is_active)
-<section class="py-5">
+<section class="section" id="destinations">
     <div class="container">
 
-        <h2 class="fw-bold mb-4 text-center">
-            {{ $dest->title ?? 'Destinasi Populer' }}
-        </h2>
+        <div class="text-center mb-5">
+            <h2 class="section-title">
+                {{ $dest->title ?? 'Destinasi Populer' }}
+            </h2>
+        </div>
 
         <div class="row g-4">
+
             @forelse(extra($dest, 'items') as $item)
                 <div class="col-md-6">
-                    <div class="card shadow-sm h-100">
 
-                        <img src="{{ img($item['image'] ?? null) }}"
-                             class="card-img-top"
-                             style="height:200px;object-fit:cover;">
+                    <div class="destination-card">
 
-                        <div class="card-body">
+                        <img src="{{ img($item['image'] ?? null) }}">
+
+                        <div class="p-4">
                             <h5 class="fw-bold">{{ $item['title'] ?? '-' }}</h5>
-                            <p class="text-muted">{{ $item['desc'] ?? '-' }}</p>
+
+                            <p class="text-muted">
+                                {{ $item['desc'] ?? '-' }}
+                            </p>
 
                             <div class="text-primary fw-bold">
                                 Rp {{ number_format($item['price'] ?? 0, 0, ',', '.') }}
@@ -96,12 +86,14 @@
                         </div>
 
                     </div>
+
                 </div>
             @empty
                 <div class="text-center text-muted">
                     Belum ada data destinasi
                 </div>
             @endforelse
+
         </div>
 
     </div>
@@ -110,36 +102,38 @@
 
 {{-- ================= SCHEDULE ================= --}}
 @if($schedule && $schedule->is_active)
-<section class="py-5 bg-light">
+<section class="section bg-light" id="schedule">
     <div class="container">
 
-        <h2 class="fw-bold mb-4">
+        <h2 class="section-title mb-4">
             {{ $schedule->title ?? 'Jadwal Keberangkatan' }}
         </h2>
 
-        <div class="card shadow-sm">
+        <div class="schedule-wrapper">
+
             @forelse(extra($schedule, 'items') as $item)
-                <div class="d-flex justify-content-between align-items-center p-3 border-bottom flex-wrap">
+                <div class="schedule-item d-flex justify-content-between align-items-center flex-wrap">
 
                     <div>
                         <strong>{{ $item['destination'] ?? '-' }}</strong><br>
                         <small class="text-muted">{{ $item['date'] ?? '-' }}</small>
                     </div>
 
-                    <span class="badge bg-success">
+                    <span class="badge-success-custom">
                         {{ $item['status'] ?? '-' }}
                     </span>
 
-                    <a href="{{ route('login') }}" class="btn btn-primary btn-sm">
+                    <a href="{{ route('login') }}" class="btn btn-primary-custom btn-sm">
                         Booking
                     </a>
 
                 </div>
             @empty
-                <div class="p-3 text-center text-muted">
+                <div class="p-4 text-center text-muted">
                     Belum ada jadwal tersedia
                 </div>
             @endforelse
+
         </div>
 
     </div>
@@ -148,20 +142,33 @@
 
 {{-- ================= FEATURES ================= --}}
 @if($features && $features->is_active)
-<section class="py-5">
+<section class="section" id="features">
     <div class="container">
 
         <div class="row text-center">
+
             @forelse(extra($features, 'items') as $item)
                 <div class="col-md-4 mb-4">
-                    <h5 class="fw-bold">{{ $item['title'] ?? '-' }}</h5>
-                    <p class="text-muted">{{ $item['desc'] ?? '-' }}</p>
+
+                    <div class="feature-box">
+                        <div class="feature-icon mx-auto">
+                            <i class="{{ $item['icon'] }}"></i>
+                        </div>
+
+                        <h5 class="fw-bold">{{ $item['title'] ?? '-' }}</h5>
+
+                        <p class="text-muted">
+                            {{ $item['desc'] ?? '-' }}
+                        </p>
+                    </div>
+
                 </div>
             @empty
                 <div class="text-center text-muted">
                     Belum ada fitur
                 </div>
             @endforelse
+
         </div>
 
     </div>
@@ -170,45 +177,69 @@
 
 {{-- ================= TESTIMONIAL ================= --}}
 @if($testimonials && $testimonials->is_active)
-<section class="py-5 bg-primary text-white">
+<section class="testimonial-section section">
     <div class="container">
 
-        <h2 class="fw-bold text-center mb-4">
+        <h2 class="text-center mb-5 text-white fw-bold">
             Testimonials
         </h2>
 
         <div class="row">
-            @forelse(extra($testimonials, 'items') as $item)
-                <div class="col-md-4 mb-3">
-                    <div class="bg-white text-dark p-4 rounded shadow-sm h-100">
 
-                        <p class="fst-italic">
-                            "{{ $item['text'] ?? '-' }}"
-                        </p>
+           @forelse(extra($testimonials, 'items') as $item)
+    <div class="col-md-4 mb-4">
 
-                        <strong>{{ $item['name'] ?? '-' }}</strong>
+        <div class="testimonial-card h-100">
 
+            {{-- TESTIMONIAL TEXT --}}
+            <p class="fst-italic mb-4">
+                "{{ $item['text'] ?? '-' }}"
+            </p>
+
+            {{-- USER --}}
+            <div class="d-flex align-items-center gap-3">
+
+                {{-- IMAGE --}}
+                <img 
+                    src="{{ img($item['image'] ?? null) }}"
+                    alt="{{ $item['name'] ?? 'User' }}"
+                    class="testimonial-avatar">
+
+                {{-- NAME --}}
+                <div>
+                    <div class="fw-bold">
+                        {{ $item['name'] ?? '-' }}
                     </div>
+
+                    <small class="text-light opacity-75">
+                        Penumpang GLADIS
+                    </small>
                 </div>
-            @empty
-                <div class="text-center">
-                    Belum ada testimonial
-                </div>
-            @endforelse
+
+            </div>
+
+        </div>
+
+    </div>
+@empty
+    <div class="text-center text-white">
+        Belum ada testimonial
+    </div>
+@endforelse
+
         </div>
 
     </div>
 </section>
 @endif
 
-{{-- ================= CTA (🔥 FINAL FIX) ================= --}}
+{{-- ================= CTA ================= --}}
 @if($cta && $cta->is_active)
-<section class="py-5 text-white text-center"
-    style="background: linear-gradient(135deg, #0d6efd, #6610f2);">
+<section class="cta-section">
 
     <div class="container">
 
-        <h2 class="fw-bold mb-3">
+        <h2>
             {{ $cta->title ?? 'Siap Berangkat?' }}
         </h2>
 
@@ -216,11 +247,12 @@
             {{ $cta->content ?? 'Pesan sekarang dan nikmati perjalanan nyaman bersama kami.' }}
         </p>
 
-        <a href="{{ route('login') }}" class="btn btn-light btn-lg fw-semibold">
+        <a href="{{ route('login') }}" class="btn btn-light btn-lg">
             {{ extra($cta, 'button_text', 'Pesan Sekarang') }}
         </a>
 
     </div>
+
 </section>
 @endif
 

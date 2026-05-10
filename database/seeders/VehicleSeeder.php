@@ -25,16 +25,6 @@ class VehicleSeeder extends Seeder
                 'plate_number' => 'E 1234 AA',
                 'seat_capacity' => 8,
             ],
-            [
-                'name' => 'Xenia',
-                'plate_number' => 'E 5678 BB',
-                'seat_capacity' => 8,
-            ],
-            [
-                'name' => 'Hiace',
-                'plate_number' => 'E 9999 CC',
-                'seat_capacity' => 12,
-            ],
         ];
 
         foreach ($vehicles as $index => $data) {
