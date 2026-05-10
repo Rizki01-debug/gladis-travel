@@ -228,8 +228,8 @@ class BookingController extends Controller
                 $serverPrice = ceil($totalRaw / 1000) * 1000;
 
                 // // ================= ANTI MANIPULASI =================
-                // if (abs($serverPrice - $frontendPrice) > 10000) {
-                //     throw new \Exception('Harga tidak valid (terdeteksi manipulasi)');
+                // if (abs($serverPrice - $frontendPrice) > 50000) {
+                //     throw new \Exception('Harga tidak valid');
                 // }
 
                 // ================= CREATE BOOKING =================
@@ -318,13 +318,26 @@ class BookingController extends Controller
     {
         $this->authorizeBookingAccess();
 
-        $booking = Booking::where('user_id', Auth::id())->findOrFail($id);
+        $booking = Booking::where('user_id', Auth::id())
+            ->findOrFail($id);
 
         if (!$booking->canBeCancelled()) {
             return back()->withErrors('Booking tidak bisa dibatalkan');
         }
 
-        $booking->update(['status' => 'cancelled']);
+        DB::transaction(function () use ($booking) {
+
+            // ================= CANCEL BOOKING =================
+            $booking->update([
+                'status' => 'cancelled'
+            ]);
+
+            // ================= CANCEL DRIVER EARNING =================
+            DriverEarning::where('booking_id', $booking->id)
+                ->update([
+                    'status' => 'cancelled'
+                ]);
+        });
 
         logActivity('Cancel Booking', 'Booking ID: ' . $booking->id);
 
