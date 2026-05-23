@@ -111,25 +111,27 @@ class DriverController extends Controller
         }
     }
 
+    /* Pengembangan Selanjutnya */
+    
     // ================= TOLAK =================
-    public function reject($id)
-    {
-        $this->authorizeDriver();
+    // public function reject($id)
+    // {
+    //     $this->authorizeDriver();
 
-        $booking = Booking::where('status', 'pending')
-            ->whereHas('schedule.vehicle', function ($q) {
-                $q->where('driver_id', $this->driverId());
-            })
-            ->findOrFail($id);
+    //     $booking = Booking::where('status', 'pending')
+    //         ->whereHas('schedule.vehicle', function ($q) {
+    //             $q->where('driver_id', $this->driverId());
+    //         })
+    //         ->findOrFail($id);
 
-        $booking->update([
-            'status' => 'cancelled'
-        ]);
+    //     $booking->update([
+    //         'status' => 'cancelled'
+    //     ]);
 
-        logActivity('Driver Tolak Booking', 'Booking ID: ' . $booking->id);
+    //     logActivity('Driver Tolak Booking', 'Booking ID: ' . $booking->id);
 
-        return back()->with('success', 'Booking ditolak!');
-    }
+    //     return back()->with('success', 'Booking ditolak!');
+    // }
 
     // ================= LIST TRIP =================
     public function trips()

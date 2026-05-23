@@ -135,7 +135,7 @@ class BookingController extends Controller
             ->findOrFail($validated['schedule_id']);
 
         // ================= VALIDASI H-3 =================
-        if (now()->diffInDays(Carbon::parse($validated['departure_date']), false) < 3) {
+        if (now()->diffInDays(Carbon::parse($validated['departure_date']), false) < 2) {
             return back()->withErrors('Booking minimal H-3 sebelum keberangkatan')->withInput();
         }
 

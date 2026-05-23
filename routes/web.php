@@ -211,7 +211,9 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/trip/{id}/complete', [DriverController::class, 'complete'])->name('trip.complete');
 
             Route::post('/{id}/confirm', [DriverController::class, 'confirm'])->name('confirm');
-            Route::post('/{id}/reject', [DriverController::class, 'reject'])->name('reject');
+            
+            /* Pengembangan Selanjutnya */
+            // Route::post('/{id}/reject', [DriverController::class, 'reject'])->name('reject');
 
             // 🔥 HARUS PALING BAWAH
             Route::get('/{id}', [DriverController::class, 'show'])->name('show');

@@ -128,13 +128,13 @@
                                                 </form>
 
                                                 {{-- REJECT --}}
-                                                <form action="{{ route('driver.reject', $b->id) }}" method="POST"
+                                                {{-- <form action="{{ route('driver.reject', $b->id) }}" method="POST"
                                                     onsubmit="return confirmAction(this,'Tolak booking ini?')">
                                                     @csrf
                                                     <button class="btn btn-danger btn-sm btn-premium">
                                                         ✖
                                                     </button>
-                                                </form>
+                                                </form> --}}
                                             @endif
 
                                         </div>

@@ -129,9 +129,9 @@
                                 <span class="badge bg-success">Selesai</span>
                             @break
 
-                            @case('rejected')
+                            {{-- @case('rejected')
                                 <span class="badge bg-danger">Ditolak</span>
-                            @break
+                            @break --}}
 
                             @default
                                 <span class="badge bg-secondary">{{ $booking->status }}</span>
@@ -154,14 +154,14 @@
                         </button>
                     </form>
 
-                    <form action="{{ route('driver.reject', $booking->id) }}"
+                    {{-- <form action="{{ route('driver.reject', $booking->id) }}"
                           method="POST"
                           onsubmit="return confirm('Tolak booking ini?')">
                         @csrf
                         <button class="btn btn-danger">
                             ❌ Tolak
                         </button>
-                    </form>
+                    </form> --}}
 
                 </div>
             @else
