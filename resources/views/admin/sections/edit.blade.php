@@ -117,8 +117,9 @@
                                    value="{{ old('order', $section->order ?? 0) }}">
                         </div>
 
+                        {{-- /* Pengembangan Selanjutnya */ --}}
                         {{-- STATUS --}}
-                        <div class="form-check mb-4">
+                        {{-- <div class="form-check mb-4">
                             <input type="hidden" name="is_active" value="0">
                             <input type="checkbox"
                                    name="is_active"
@@ -126,7 +127,7 @@
                                    class="form-check-input"
                                    {{ old('is_active', $section->is_active) ? 'checked' : '' }}>
                             <label class="form-check-label">Aktifkan Section</label>
-                        </div>
+                        </div> --}}
 
                         {{-- BUTTON --}}
                         <div class="d-flex justify-content-between">

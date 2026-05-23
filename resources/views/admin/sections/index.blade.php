@@ -66,12 +66,13 @@
                                     {{ $s->order }}
                                 </td>
 
+                                {{-- /* Pengembangan Selanjutnya */ --}}
                                 {{-- STATUS --}}
-                                <td class="text-center">
+                                {{-- <td class="text-center">
                                     <span class="badge {{ $s->is_active ? 'bg-success' : 'bg-secondary' }}">
                                         {{ $s->is_active ? 'Aktif' : 'Nonaktif' }}
                                     </span>
-                                </td>
+                                </td> --}}
 
                                 {{-- ACTION --}}
                                 <td>

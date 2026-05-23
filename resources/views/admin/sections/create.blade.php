@@ -104,13 +104,14 @@
                             <input type="number" name="order" class="form-control" value="{{ old('order', 0) }}">
                         </div>
 
+                        {{-- /* Pengembangan Selanjutnya */ --}}
                         {{-- STATUS --}}
-                        <div class="form-check mb-4">
+                        {{-- <div class="form-check mb-4">
                             <input type="hidden" name="is_active" value="0">
                             <input type="checkbox" name="is_active" value="1" class="form-check-input"
                                 {{ old('is_active', true) ? 'checked' : '' }}>
                             <label class="form-check-label">Aktifkan Section</label>
-                        </div>
+                        </div> --}}
 
                         {{-- ACTION --}}
                         <div class="d-flex justify-content-between">
