@@ -19,8 +19,9 @@ class DashboardController extends Controller
         $totalBooking = Booking::count();
         $totalTrip = Trip::count();
 
-        // 🔥 gunakan DriverEarning sebagai sumber utama uang
-        $income = DriverEarning::sum('amount');
+        // Hanya hitung earning yang masih valid
+        $income = DriverEarning::whereIn('status', ['paid', 'unpaid'])
+            ->sum('amount');
 
         $pendingIncome = DriverEarning::where('status', 'unpaid')
             ->sum('amount');
@@ -34,7 +35,10 @@ class DashboardController extends Controller
             ->values();
 
         // ================= CHART REVENUE =================
-        $revenue = DriverEarning::selectRaw('DATE(created_at) as date, SUM(amount) as total')
+        $revenue = DriverEarning::selectRaw(
+            'DATE(created_at) as date, SUM(amount) as total'
+        )
+            ->whereIn('status', ['paid', 'unpaid'])
             ->groupBy('date')
             ->orderBy('date', 'asc')
             ->get()
@@ -93,6 +97,7 @@ class DashboardController extends Controller
 
         // ================= BASE QUERY =================
         $tripQuery = Trip::where('driver_id', $driverId);
+
         $earningQuery = DriverEarning::where('driver_id', $driverId);
 
         // ================= SUMMARY =================
@@ -102,7 +107,10 @@ class DashboardController extends Controller
             ->where('trip_status', 'completed')
             ->count();
 
-        $totalEarning = (clone $earningQuery)->sum('amount');
+        // Hanya hitung earning yang valid
+        $totalEarning = (clone $earningQuery)
+            ->whereIn('status', ['paid', 'unpaid'])
+            ->sum('amount');
 
         $paidEarning = (clone $earningQuery)
             ->where('status', 'paid')
@@ -115,7 +123,7 @@ class DashboardController extends Controller
         // ================= CHART (7 HARI TERAKHIR) =================
         $startDate = now()->subDays(6)->startOfDay();
 
-        // 🔥 TRIP CHART
+        // ================= TRIP CHART =================
         $tripChart = Trip::selectRaw('DATE(created_at) as date, COUNT(*) as total')
             ->where('driver_id', $driverId)
             ->whereDate('created_at', '>=', $startDate)
@@ -123,9 +131,12 @@ class DashboardController extends Controller
             ->orderBy('date')
             ->get();
 
-        // 🔥 EARNING CHART
-        $earningChart = DriverEarning::selectRaw('DATE(created_at) as date, SUM(amount) as total')
+        // ================= EARNING CHART =================
+        $earningChart = DriverEarning::selectRaw(
+            'DATE(created_at) as date, SUM(amount) as total'
+        )
             ->where('driver_id', $driverId)
+            ->whereIn('status', ['paid', 'unpaid'])
             ->whereDate('created_at', '>=', $startDate)
             ->groupBy('date')
             ->orderBy('date')

@@ -67,7 +67,7 @@ class FinanceController extends Controller
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'amount' => 'required|numeric|min:0',
+            'amount' => 'required|numeric|min:1',
             'category' => 'required|string|max:100',
             'expense_date' => 'required|date',
             'description' => 'nullable|string'
@@ -100,7 +100,7 @@ class FinanceController extends Controller
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'amount' => 'required|numeric|min:0',
+            'amount' => 'required|numeric|min:1',
             'category' => 'required|string|max:100',
             'expense_date' => 'required|date',
             'description' => 'nullable|string'
@@ -246,25 +246,33 @@ class FinanceController extends Controller
         $this->authorizeFinance();
 
         try {
+
             DB::transaction(function () use ($id) {
 
-                $earning = DriverEarning::lockForUpdate()->findOrFail($id);
+                $earning = DriverEarning::lockForUpdate()
+                    ->findOrFail($id);
 
+                // ================= VALIDASI STATUS =================
                 if ($earning->status === 'paid') {
-                    throw new \Exception('Sudah dikonfirmasi');
+                    throw new \Exception('Setoran sudah dikonfirmasi');
                 }
 
-                // ✅ UPDATE STATUS
+                if ($earning->status === 'cancelled') {
+                    throw new \Exception('Booking telah dibatalkan dan tidak dapat dikonfirmasi');
+                }
+
+                // ================= UPDATE STATUS =================
                 $earning->update([
                     'status' => 'paid'
                 ]);
 
-                // ✅ CEK TRANSACTION EXIST
+                // ================= CEK DUPLIKASI TRANSAKSI =================
                 $exists = Transaction::where('booking_id', $earning->booking_id)
                     ->where('type', 'income')
                     ->exists();
 
                 if (!$exists) {
+
                     Transaction::create([
                         'booking_id' => $earning->booking_id,
                         'amount' => $earning->amount,
@@ -274,12 +282,21 @@ class FinanceController extends Controller
                     ]);
                 }
 
-                logActivity('Setoran Driver', 'Earning ID: ' . $earning->id);
+                logActivity(
+                    'Setoran Driver',
+                    'Earning ID: ' . $earning->id
+                );
             });
 
-            return back()->with('success', 'Setoran berhasil dikonfirmasi!');
+            return back()->with(
+                'success',
+                'Setoran berhasil dikonfirmasi!'
+            );
         } catch (\Exception $e) {
-            return back()->withErrors($e->getMessage());
+
+            return back()->withErrors(
+                $e->getMessage()
+            );
         }
     }
 }

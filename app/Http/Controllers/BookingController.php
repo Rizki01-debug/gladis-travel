@@ -227,6 +227,7 @@ class BookingController extends Controller
                 $totalRaw = $pricePerSeat * count($validated['seat_id']);
                 $serverPrice = ceil($totalRaw / 1000) * 1000;
 
+                // Pengembangan Selanjutnya 
                 // // ================= ANTI MANIPULASI =================
                 // if (abs($serverPrice - $frontendPrice) > 50000) {
                 //     throw new \Exception('Harga tidak valid');

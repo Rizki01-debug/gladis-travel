@@ -29,12 +29,12 @@ class DriverController extends Controller
         $this->authorizeDriver();
 
         $bookings = Booking::with([
-                'user',
-                'seats',
-                'schedule.vehicle',
-                'schedule.origin',
-                'schedule.destination'
-            ])
+            'user',
+            'seats',
+            'schedule.vehicle',
+            'schedule.origin',
+            'schedule.destination'
+        ])
             ->where('status', 'pending')
             ->whereHas('schedule.vehicle', function ($q) {
                 $q->where('driver_id', $this->driverId());
@@ -51,13 +51,13 @@ class DriverController extends Controller
         $this->authorizeDriver();
 
         $booking = Booking::with([
-                'user',
-                'seats',
-                'meetingPoint',
-                'schedule.vehicle',
-                'schedule.origin',
-                'schedule.destination'
-            ])
+            'user',
+            'seats',
+            'meetingPoint',
+            'schedule.vehicle',
+            'schedule.origin',
+            'schedule.destination'
+        ])
             ->whereHas('schedule.vehicle', function ($q) {
                 $q->where('driver_id', $this->driverId());
             })
@@ -112,7 +112,7 @@ class DriverController extends Controller
     }
 
     /* Pengembangan Selanjutnya */
-    
+
     // ================= TOLAK =================
     // public function reject($id)
     // {
@@ -139,12 +139,12 @@ class DriverController extends Controller
         $this->authorizeDriver();
 
         $trips = Trip::with([
-                'booking.user',
-                'booking.seats',
-                'booking.meetingPoint',
-                'booking.schedule.origin',
-                'booking.schedule.destination'
-            ])
+            'booking.user',
+            'booking.seats',
+            'booking.meetingPoint',
+            'booking.schedule.origin',
+            'booking.schedule.destination'
+        ])
             ->where('driver_id', $this->driverId())
             ->latest()
             ->paginate(10);
@@ -220,6 +220,7 @@ class DriverController extends Controller
     }
 
     // ================= DRIVER EARNINGS =================
+
     public function earnings()
     {
         $this->authorizeDriver();
@@ -231,7 +232,10 @@ class DriverController extends Controller
             ->latest()
             ->paginate(10);
 
-        $total = (clone $query)->sum('amount');
+        // Hanya hitung yang masih valid (bukan cancelled)
+        $total = (clone $query)
+            ->whereIn('status', ['paid', 'unpaid'])
+            ->sum('amount');
 
         $paid = (clone $query)
             ->where('status', 'paid')
