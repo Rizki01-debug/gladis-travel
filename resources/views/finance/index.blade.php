@@ -74,7 +74,7 @@
 
                         <thead>
                             <tr class="text-center">
-                                <th>#</th>
+                                <th>No</th>
                                 <th class="text-start">Judul</th>
                                 <th>Kategori</th>
                                 <th>Jumlah</th>
