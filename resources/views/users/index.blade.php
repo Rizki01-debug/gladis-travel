@@ -24,7 +24,7 @@
 
                         <thead>
                             <tr class="text-center">
-                                <th width="60">#</th>
+                                <th width="60">No</th>
                                 <th class="text-start">Nama</th>
                                 <th>Email</th>
                                 <th>Role</th>

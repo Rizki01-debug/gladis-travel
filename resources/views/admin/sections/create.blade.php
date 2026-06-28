@@ -22,6 +22,13 @@
         </div>
     @endif
 
+    {{-- SUCCESS --}}
+    @if (session('success'))
+        <div class="alert alert-success">
+            {{ session('success') }}
+        </div>
+    @endif
+
     <div class="row g-3">
 
         {{-- ================= FORM ================= --}}
@@ -61,57 +68,81 @@
                                     </option>
                                 @endforeach
                             </select>
+                            <small class="text-muted">Pilih tipe section yang akan dibuat</small>
                         </div>
 
                         {{-- TITLE --}}
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Title</label>
-                            <input type="text" name="title" class="form-control" value="{{ old('title') }}">
+                            <input type="text" name="title" class="form-control" value="{{ old('title') }}" placeholder="Masukkan judul section">
+                            <small class="text-muted">Judul utama section (contoh: Destinasi Populer)</small>
                         </div>
 
                         {{-- CONTENT --}}
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Content</label>
-                            <textarea name="content" class="form-control" rows="3">{{ old('content') }}</textarea>
+                            <textarea name="content" class="form-control" rows="3" placeholder="Masukkan konten deskripsi">{{ old('content') }}</textarea>
+                            <small class="text-muted">Deskripsi atau subjudul section</small>
                         </div>
 
-                        {{-- IMAGE --}}
+                        {{-- ================= IMAGE HERO - FIXED ================= --}}
                         <div class="mb-3 d-none" id="mainImage">
                             <label class="form-label fw-semibold">Image (Hero)</label>
                             <input type="file" name="image" class="form-control" accept="image/*">
+                            <small class="text-muted">Upload gambar untuk hero section (max 2MB, format: jpg, jpeg, png, webp)</small>
+                            <div id="imagePreview" class="mt-2 d-none">
+                                <img id="heroImagePreview" src="" width="180" class="rounded border shadow-sm">
+                                <br>
+                                <button type="button" class="btn btn-sm btn-danger mt-2" onclick="removeHeroImage()">
+                                    🗑 Hapus Gambar
+                                </button>
+                            </div>
                         </div>
 
-                        {{-- REPEATER --}}
+                        {{-- ================= REPEATER - FIXED ================= --}}
                         <div class="mb-3 d-none" id="repeaterSection">
                             <label class="form-label fw-semibold">Items</label>
+                            <small class="text-muted d-block mb-2">Tambahkan item untuk section ini</small>
 
-                            <div id="items-wrapper"></div>
+                            <div id="items-wrapper">
+                                <div class="text-muted p-3 border rounded" id="emptyState">
+                                    Belum ada items. Klik "Tambah Item" untuk menambahkan.
+                                </div>
+                            </div>
 
                             <button type="button" class="btn btn-sm btn-primary mt-2" onclick="addItem()">
-                                + Tambah Item
+                                ➕ Tambah Item
                             </button>
                         </div>
 
-                        {{-- JSON --}}
+                        {{-- ================= JSON MANUAL ================= --}}
                         <div class="mb-3 d-none" id="jsonManual">
                             <label class="form-label fw-semibold">Extra JSON</label>
-                            <textarea name="extra" class="form-control" rows="4">{{ old('extra') }}</textarea>
+                            <textarea name="extra" class="form-control" rows="4" placeholder='{"button_text": "Mulai Sekarang"}'>{{ old('extra') }}</textarea>
+                            <small class="text-muted">Masukkan data JSON untuk section (contoh: {"button_text": "Mulai"})</small>
                         </div>
 
                         {{-- ORDER --}}
                         <div class="mb-3">
-                            <label class="form-label">Order</label>
-                            <input type="number" name="order" class="form-control" value="{{ old('order', 0) }}">
+                            <label class="form-label fw-semibold">Order</label>
+                            <input type="number" name="order" class="form-control" value="{{ old('order', 0) }}" min="0">
+                            <small class="text-muted">Urutan tampilan section (semakin kecil semakin atas)</small>
                         </div>
 
-                        {{-- /* Pengembangan Selanjutnya */ --}}
                         {{-- STATUS --}}
-                        {{-- <div class="form-check mb-4">
+                        <div class="form-check mb-4">
                             <input type="hidden" name="is_active" value="0">
-                            <input type="checkbox" name="is_active" value="1" class="form-check-input"
-                                {{ old('is_active', true) ? 'checked' : '' }}>
-                            <label class="form-check-label">Aktifkan Section</label>
-                        </div> --}}
+                            <input type="checkbox" 
+                                   name="is_active" 
+                                   value="1" 
+                                   class="form-check-input"
+                                   id="isActiveCheckbox"
+                                   {{ old('is_active', true) ? 'checked' : '' }}>
+                            <label class="form-check-label" for="isActiveCheckbox">
+                                Aktifkan Section
+                            </label>
+                            <small class="text-muted d-block">Jika tidak aktif, section tidak akan tampil di landing page</small>
+                        </div>
 
                         {{-- ACTION --}}
                         <div class="d-flex justify-content-between">
@@ -163,58 +194,138 @@
 <script>
 let index = 0;
 let currentType = null;
+let items = [];
 
-// ================= FIELD TEMPLATE =================
+// ================= FIELD TEMPLATE - FIXED =================
 function getFields(type, i) {
 
     const map = {
         destinations: `
-            <input name="items[${i}][title]" class="form-control mb-2" placeholder="Nama Destinasi">
-            <input name="items[${i}][desc]" class="form-control mb-2" placeholder="Deskripsi">
-            <input name="items[${i}][price]" class="form-control mb-2" placeholder="Harga">
-            <input type="file" name="items[${i}][image]" class="form-control mb-2">
+            <div class="mb-2">
+                <label class="form-label fw-semibold">Nama Destinasi</label>
+                <input name="items[${i}][title]" class="form-control" placeholder="Contoh: Bali Paradise">
+            </div>
+            <div class="mb-2">
+                <label class="form-label">Deskripsi</label>
+                <input name="items[${i}][desc]" class="form-control" placeholder="Contoh: Pantai eksotis dengan pemandangan indah">
+            </div>
+            <div class="mb-2">
+                <label class="form-label">Harga</label>
+                <input name="items[${i}][price]" class="form-control" placeholder="Contoh: 1500000">
+            </div>
+            <div class="mb-2">
+                <label class="form-label">Gambar Destinasi</label>
+                <input type="file" name="items[${i}][image]" class="form-control" accept="image/*">
+                <small class="text-muted">Upload gambar destinasi (max 2MB)</small>
+            </div>
+            <div class="mt-2" id="preview_${i}"></div>
         `,
         schedule: `
-            <input name="items[${i}][destination]" class="form-control mb-2" placeholder="Tujuan">
-            <input name="items[${i}][date]" class="form-control mb-2" placeholder="Tanggal / Jam">
-            <input name="items[${i}][status]" class="form-control mb-2" placeholder="Status">
+            <div class="mb-2">
+                <label class="form-label">Tujuan</label>
+                <input name="items[${i}][destination]" class="form-control" placeholder="Contoh: Jakarta - Bandung">
+            </div>
+            <div class="mb-2">
+                <label class="form-label">Tanggal / Jam</label>
+                <input name="items[${i}][date]" class="form-control" placeholder="Contoh: 2026-07-01 08:00">
+            </div>
+            <div class="mb-2">
+                <label class="form-label">Status</label>
+                <input name="items[${i}][status]" class="form-control" placeholder="Contoh: Tersedia / Penuh">
+            </div>
         `,
         features: `
-            <input name="items[${i}][title]" class="form-control mb-2" placeholder="Judul">
-            <input name="items[${i}][desc]" class="form-control mb-2" placeholder="Deskripsi">
-            <input name="items[${i}][icon]" class="form-control mb-2" placeholder="Icon (fa-car)">
+            <div class="mb-2">
+                <label class="form-label">Judul Fitur</label>
+                <input name="items[${i}][title]" class="form-control" placeholder="Contoh: Nyaman">
+            </div>
+            <div class="mb-2">
+                <label class="form-label">Deskripsi</label>
+                <input name="items[${i}][desc]" class="form-control" placeholder="Contoh: Perjalanan yang nyaman dan aman">
+            </div>
+            <div class="mb-2">
+                <label class="form-label">Icon</label>
+                <input name="items[${i}][icon]" class="form-control" placeholder="Contoh: fa-car">
+                <small class="text-muted">Gunakan icon dari FontAwesome (contoh: fa-car, fa-users)</small>
+            </div>
         `,
         testimonials: `
-            <input name="items[${i}][name]" class="form-control mb-2" placeholder="Nama">
-            <textarea name="items[${i}][text]" class="form-control mb-2" placeholder="Testimoni"></textarea>
-            <input type="file" name="items[${i}][image]" class="form-control mb-2">
+            <div class="mb-2">
+                <label class="form-label">Nama</label>
+                <input name="items[${i}][name]" class="form-control" placeholder="Contoh: Budi Santoso">
+            </div>
+            <div class="mb-2">
+                <label class="form-label">Testimoni</label>
+                <textarea name="items[${i}][text]" class="form-control" rows="2" placeholder="Tulis testimoni..."></textarea>
+            </div>
+            <div class="mb-2">
+                <label class="form-label">Foto Profil</label>
+                <input type="file" name="items[${i}][image]" class="form-control" accept="image/*">
+                <small class="text-muted">Upload foto profil (max 2MB)</small>
+            </div>
+            <div class="mt-2" id="preview_${i}"></div>
         `
     };
 
     return map[type] || '';
 }
 
-// ================= ADD ITEM =================
+// ================= ADD ITEM - FIXED =================
 function addItem() {
-    if (!currentType) return;
+    if (!currentType) {
+        alert('Pilih tipe section terlebih dahulu!');
+        return;
+    }
 
     const wrapper = document.getElementById('items-wrapper');
+    const emptyState = document.getElementById('emptyState');
+    
+    // Hapus empty state jika ada
+    if (emptyState) {
+        emptyState.remove();
+    }
 
     const card = document.createElement('div');
     card.className = 'card p-3 mb-3';
+    card.id = `item-${index}`;
 
     card.innerHTML = `
+        <div class="d-flex justify-content-between mb-2">
+            <strong class="text-primary">Item #${index + 1}</strong>
+            <button type="button" class="btn btn-danger btn-sm" onclick="removeItem(${index})">
+                🗑 Hapus
+            </button>
+        </div>
         ${getFields(currentType, index)}
-        <button type="button" class="btn btn-danger btn-sm mt-2">Hapus</button>
     `;
 
-    card.querySelector('button').onclick = () => card.remove();
-
     wrapper.appendChild(card);
+    items.push(index);
     index++;
 }
 
-// ================= TOGGLE =================
+// ================= REMOVE ITEM =================
+function removeItem(id) {
+    if (confirm('Yakin hapus item ini?')) {
+        const element = document.getElementById(`item-${id}`);
+        if (element) {
+            element.remove();
+            items = items.filter(i => i !== id);
+            
+            // Tampilkan empty state jika tidak ada items
+            if (items.length === 0) {
+                const wrapper = document.getElementById('items-wrapper');
+                wrapper.innerHTML = `
+                    <div class="text-muted p-3 border rounded" id="emptyState">
+                        Belum ada items. Klik "Tambah Item" untuk menambahkan.
+                    </div>
+                `;
+            }
+        }
+    }
+}
+
+// ================= TOGGLE MODE - FIXED =================
 function toggleMode() {
 
     const val = document.getElementById('keySelect').value;
@@ -224,10 +335,22 @@ function toggleMode() {
     const jsonManual = document.getElementById('jsonManual');
     const mainImage = document.getElementById('mainImage');
 
+    // Reset semua
     repeater.classList.add('d-none');
     jsonManual.classList.add('d-none');
     mainImage.classList.add('d-none');
 
+    // Reset items
+    const wrapper = document.getElementById('items-wrapper');
+    wrapper.innerHTML = `
+        <div class="text-muted p-3 border rounded" id="emptyState">
+            Belum ada items. Klik "Tambah Item" untuk menambahkan.
+        </div>
+    `;
+    items = [];
+    index = 0;
+
+    // Tampilkan sesuai tipe
     if (val === 'hero') {
         mainImage.classList.remove('d-none');
     }
@@ -239,14 +362,46 @@ function toggleMode() {
     }
 }
 
-document.getElementById('keySelect').addEventListener('change', toggleMode);
-toggleMode();
+// ================= PREVIEW IMAGE =================
+function previewHeroImage(input) {
+    const previewContainer = document.getElementById('imagePreview');
+    const previewImg = document.getElementById('heroImagePreview');
+    
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            previewImg.src = e.target.result;
+            previewContainer.classList.remove('d-none');
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
 
-// ================= PREVIEW =================
+// ================= REMOVE HERO IMAGE =================
+function removeHeroImage() {
+    const input = document.querySelector('input[name="image"]');
+    const previewContainer = document.getElementById('imagePreview');
+    
+    if (input) {
+        input.value = '';
+        previewContainer.classList.add('d-none');
+    }
+}
+
+// ================= PREVIEW - FIXED =================
 function previewData() {
 
     const form = document.getElementById('sectionForm');
     const formData = new FormData(form);
+
+    // Tambahkan flag untuk preview
+    formData.append('_preview', '1');
+
+    // Tampilkan loading
+    const previewBtn = document.querySelector('.btn-info');
+    const originalText = previewBtn.innerHTML;
+    previewBtn.innerHTML = '⏳ Loading...';
+    previewBtn.disabled = true;
 
     fetch("{{ route('landing.preview.store') }}", {
         method: 'POST',
@@ -256,10 +411,95 @@ function previewData() {
         body: formData
     })
     .then(res => res.json())
-    .then(() => {
-        document.getElementById('previewFrame').src =
-            "{{ route('landing.preview') }}?t=" + Date.now();
+    .then(data => {
+        if (data.success) {
+            document.getElementById('previewFrame').src =
+                "{{ route('landing.preview') }}?t=" + Date.now();
+            
+            // Tampilkan notifikasi sukses
+            showNotification('success', 'Preview berhasil dimuat');
+        } else {
+            showNotification('danger', data.message || 'Gagal membuat preview');
+        }
+    })
+    .catch(error => {
+        console.error('Preview error:', error);
+        showNotification('danger', 'Terjadi kesalahan saat preview. Cek console.');
+    })
+    .finally(() => {
+        // Reset button
+        previewBtn.innerHTML = originalText;
+        previewBtn.disabled = false;
     });
 }
+
+// ================= NOTIFICATION HELPER =================
+function showNotification(type, message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade-in`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.container-fluid');
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    // Auto dismiss after 5 seconds
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 5000);
+}
+
+// ================= EVENT LISTENERS =================
+document.addEventListener('DOMContentLoaded', function() {
+    // Key select change
+    document.getElementById('keySelect').addEventListener('change', toggleMode);
+    toggleMode();
+    
+    // Hero image preview
+    document.querySelector('input[name="image"]')?.addEventListener('change', function() {
+        previewHeroImage(this);
+    });
+    
+    // Form submit validation
+    document.getElementById('sectionForm').addEventListener('submit', function(e) {
+        const key = document.getElementById('keySelect').value;
+        if (!key) {
+            e.preventDefault();
+            showNotification('danger', 'Silakan pilih tipe section terlebih dahulu!');
+            return false;
+        }
+        
+        // Validasi untuk hero
+        if (key === 'hero') {
+            const imageInput = document.querySelector('input[name="image"]');
+            if (!imageInput || !imageInput.files || imageInput.files.length === 0) {
+                e.preventDefault();
+                showNotification('danger', 'Silakan upload gambar untuk hero section!');
+                return false;
+            }
+        }
+        
+        // Validasi untuk repeater
+        if (['destinations','schedule','features','testimonials'].includes(key)) {
+            if (items.length === 0) {
+                e.preventDefault();
+                showNotification('danger', 'Silakan tambahkan minimal 1 item!');
+                return false;
+            }
+        }
+        
+        return true;
+    });
+});
+
+// Export ke global scope
+window.addItem = addItem;
+window.removeItem = removeItem;
+window.previewData = previewData;
+window.removeHeroImage = removeHeroImage;
+window.previewHeroImage = previewHeroImage;
+
 </script>
 @endpush

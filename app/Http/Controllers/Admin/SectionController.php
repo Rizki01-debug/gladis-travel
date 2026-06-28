@@ -8,6 +8,7 @@ use App\Models\Page;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 class SectionController extends Controller
 {
@@ -61,35 +62,17 @@ class SectionController extends Controller
 
         // ================= HERO IMAGE =================
         if ($request->hasFile('image')) {
-            $data['image'] = $request->file('image')
-                ->store('sections', 'public');
+            $data['image'] = $this->uploadImage($request->file('image'));
         }
 
         // ================= REPEATER =================
         if ($request->has('items')) {
-
-            $items = [];
-
-            foreach ($request->items as $i => $item) {
-
-                if (empty(array_filter($item))) continue;
-
-                $newItem = $item;
-
-                if ($request->hasFile("items.$i.image")) {
-                    $newItem['image'] = $request->file("items.$i.image")
-                        ->store('sections', 'public');
-                }
-
-                $items[] = $newItem;
-            }
-
+            $items = $this->processRepeaterItems($request, null);
             $data['extra'] = ['items' => $items];
         }
 
         // ================= JSON MANUAL =================
         elseif ($request->filled('extra')) {
-
             $decoded = json_decode($request->extra, true);
 
             if (json_last_error() !== JSON_ERROR_NONE) {
@@ -116,13 +99,14 @@ class SectionController extends Controller
         return view('admin.sections.edit', compact('section', 'pages'));
     }
 
-    // ================= UPDATE =================
+    // ================= UPDATE - FIXED =================
     public function update(Request $request, Section $section)
     {
         $this->authorizeAccess();
 
         $data = $request->validate([
             'page_id' => 'required|exists:pages,id',
+            'key'     => 'required|string|max:100',
             'title'   => 'nullable|string|max:255',
             'content' => 'nullable|string',
             'image'   => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
@@ -131,54 +115,24 @@ class SectionController extends Controller
 
         $data['is_active'] = $request->has('is_active');
 
-        // ================= HERO IMAGE =================
+        // ================= HERO IMAGE - FIXED =================
         if ($request->hasFile('image')) {
-
-            if ($section->image && Storage::disk('public')->exists($section->image)) {
-                Storage::disk('public')->delete($section->image);
-            }
-
-            $data['image'] = $request->file('image')
-                ->store('sections', 'public');
+            // Hapus image lama
+            $this->deleteImage($section->image);
+            
+            // Upload image baru
+            $data['image'] = $this->uploadImage($request->file('image'));
         }
 
-        // ================= REPEATER =================
+        // ================= REPEATER - FIXED =================
         if ($request->has('items')) {
-
-            $items = [];
             $oldItems = $section->extra['items'] ?? [];
-
-            foreach ($request->items as $i => $item) {
-
-                if (empty(array_filter($item))) continue;
-
-                $newItem = $item;
-
-                // 🔥 IMAGE BARU
-                if ($request->hasFile("items.$i.image")) {
-
-                    if (!empty($oldItems[$i]['image']) &&
-                        Storage::disk('public')->exists($oldItems[$i]['image'])) {
-                        Storage::disk('public')->delete($oldItems[$i]['image']);
-                    }
-
-                    $newItem['image'] = $request->file("items.$i.image")
-                        ->store('sections', 'public');
-                }
-                // 🔥 PAKAI LAMA
-                else {
-                    $newItem['image'] = $oldItems[$i]['image'] ?? null;
-                }
-
-                $items[] = $newItem;
-            }
-
+            $items = $this->processRepeaterItems($request, $oldItems);
             $data['extra'] = ['items' => $items];
         }
 
         // ================= JSON =================
         elseif ($request->filled('extra')) {
-
             $decoded = json_decode($request->extra, true);
 
             if (json_last_error() !== JSON_ERROR_NONE) {
@@ -205,18 +159,14 @@ class SectionController extends Controller
     {
         $this->authorizeAccess();
 
-        // 🔥 HERO IMAGE
-        if ($section->image && Storage::disk('public')->exists($section->image)) {
-            Storage::disk('public')->delete($section->image);
-        }
+        // Hapus hero image
+        $this->deleteImage($section->image);
 
-        // 🔥 REPEATER IMAGE
+        // Hapus repeater images
         $items = $section->extra['items'] ?? [];
-
         foreach ($items as $item) {
-            if (!empty($item['image']) &&
-                Storage::disk('public')->exists($item['image'])) {
-                Storage::disk('public')->delete($item['image']);
+            if (!empty($item['image'])) {
+                $this->deleteImage($item['image']);
             }
         }
 
@@ -235,5 +185,107 @@ class SectionController extends Controller
         ]);
 
         return back()->with('success', 'Status section berhasil diubah');
+    }
+
+    // ================= HELPER: UPLOAD IMAGE =================
+    private function uploadImage($file)
+    {
+        try {
+            // Generate unique filename
+            $filename = uniqid() . '_' . Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '.' . $file->getClientOriginalExtension();
+            
+            // Store file
+            $path = $file->storeAs('sections', $filename, 'public');
+            
+            if (!$path) {
+                throw new \Exception('Gagal upload image');
+            }
+            
+            return $path;
+        } catch (\Exception $e) {
+            throw new \Exception('Upload image gagal: ' . $e->getMessage());
+        }
+    }
+
+    // ================= HELPER: DELETE IMAGE =================
+    private function deleteImage($path)
+    {
+        if (empty($path)) {
+            return;
+        }
+
+        try {
+            if (Storage::disk('public')->exists($path)) {
+                Storage::disk('public')->delete($path);
+                return true;
+            }
+        } catch (\Exception $e) {
+            // Log error tapi jangan stop proses
+            // \Log::warning('Gagal hapus image: ' . $path . ' - ' . $e->getMessage());
+        }
+
+        return false;
+    }
+
+    // ================= HELPER: PROCESS REPEATER ITEMS =================
+    private function processRepeaterItems($request, $oldItems = null)
+    {
+        $items = [];
+        $oldItems = $oldItems ?? [];
+        $oldItemsIndexed = array_values($oldItems); // Re-index untuk keamanan
+
+        foreach ($request->items as $i => $item) {
+            // Skip empty items
+            if (empty(array_filter($item, function($value) {
+                return !is_null($value) && $value !== '';
+            }))) {
+                continue;
+            }
+
+            $newItem = $item;
+
+            // 🔥 Handle image upload
+            if ($request->hasFile("items.$i.image")) {
+                $file = $request->file("items.$i.image");
+                
+                // Cek validasi file
+                if ($file->isValid()) {
+                    // Hapus old image jika ada (cari berdasarkan index yang benar)
+                    $oldItem = $oldItemsIndexed[$i] ?? null;
+                    if ($oldItem && !empty($oldItem['image'])) {
+                        $this->deleteImage($oldItem['image']);
+                    }
+
+                    // Upload new image
+                    $newItem['image'] = $this->uploadImage($file);
+                }
+            } 
+            // 🔥 Gunakan image lama jika ada
+            else {
+                $oldItem = $oldItemsIndexed[$i] ?? null;
+                $newItem['image'] = $oldItem['image'] ?? null;
+            }
+
+            $items[] = $newItem;
+        }
+
+        return $items;
+    }
+
+    // ================= HELPER: REORDER ITEMS =================
+    public function reorder(Request $request)
+    {
+        $this->authorizeAccess();
+
+        $request->validate([
+            'orders' => 'required|array',
+            'orders.*' => 'required|integer|exists:sections,id',
+        ]);
+
+        foreach ($request->orders as $index => $id) {
+            Section::where('id', $id)->update(['order' => $index]);
+        }
+
+        return response()->json(['success' => true]);
     }
 }

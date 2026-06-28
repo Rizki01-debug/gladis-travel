@@ -32,7 +32,7 @@
                         <thead class="table-light">
 
                             <tr class="text-center align-middle">
-                                <th width="6%">#</th>
+                                <th width="6%">No</th>
                                 <th width="18%">Driver</th>
                                 <th width="18%">Penumpang</th>
                                 <th width="22%">Rute</th>

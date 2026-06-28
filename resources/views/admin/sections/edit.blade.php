@@ -69,21 +69,22 @@
                         {{-- CONTENT --}}
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Content</label>
-                            <textarea name="content" class="form-control" rows="3">
-{{ old('content', $section->content) }}</textarea>
+                            <textarea name="content" class="form-control" rows="3">{{ old('content', $section->content) }}</textarea>
                         </div>
 
-                        {{-- IMAGE HERO --}}
-                        <div class="mb-3 d-none" id="mainImage">
+                        {{-- ================= IMAGE HERO - FIXED ================= --}}
+                        <div class="mb-3" id="mainImage">
                             <label class="form-label fw-semibold">Ganti Image</label>
 
                             <input type="file" name="image" class="form-control" accept="image/*">
 
                             @if ($section->image)
                                 <div class="mt-2">
-                                    <img src="{{ asset('storage/'.$section->image) }}"
+                                    <img src="{{ asset('storage/' . $section->image) }}"
                                          width="180"
                                          class="rounded border shadow-sm">
+                                    <br>
+                                    <small class="text-muted">Current: {{ $section->image }}</small>
                                 </div>
                             @endif
                         </div>
@@ -104,8 +105,7 @@
                         {{-- JSON --}}
                         <div id="jsonManual" class="mb-3 d-none">
                             <label class="form-label fw-semibold">Extra JSON</label>
-                            <textarea name="extra" class="form-control" rows="4">
-{{ old('extra', $section->extra ? json_encode($section->extra, JSON_PRETTY_PRINT) : '') }}</textarea>
+                            <textarea name="extra" class="form-control" rows="4">{{ old('extra', $section->extra ? json_encode($section->extra, JSON_PRETTY_PRINT) : '') }}</textarea>
                         </div>
 
                         {{-- ORDER --}}
@@ -117,7 +117,7 @@
                                    value="{{ old('order', $section->order ?? 0) }}">
                         </div>
 
-                        {{-- /* Pengembangan Selanjutnya */ --}}
+                        {{-- NEXT PENGEMBANGAN --}}
                         {{-- STATUS --}}
                         {{-- <div class="form-check mb-4">
                             <input type="hidden" name="is_active" value="0">
@@ -186,7 +186,7 @@ let items = @json($section->extra['items'] ?? []);
 let currentType = "{{ $section->key }}";
 let index = items.length;
 
-// ================= TEMPLATE =================
+// ================= TEMPLATE - FIXED =================
 function getFields(type, i, item = {}) {
 
     const map = {
@@ -194,8 +194,9 @@ function getFields(type, i, item = {}) {
             <input name="items[${i}][title]" class="form-control mb-2" value="${item.title || ''}" placeholder="Nama Destinasi">
             <input name="items[${i}][desc]" class="form-control mb-2" value="${item.desc || ''}" placeholder="Deskripsi">
             <input name="items[${i}][price]" class="form-control mb-2" value="${item.price || ''}" placeholder="Harga">
-            ${item.image ? `<img src="/storage/${item.image}" width="120" class="mb-2 rounded">` : ''}
+            ${item.image ? `<img src="{{ asset('storage/${item.image}') }}" width="120" class="mb-2 rounded">` : ''}
             <input type="file" name="items[${i}][image]" class="form-control mb-2">
+            <small class="text-muted">Upload gambar baru untuk mengganti</small>
         `,
         schedule: `
             <input name="items[${i}][destination]" class="form-control mb-2" value="${item.destination || ''}" placeholder="Tujuan">
@@ -209,9 +210,10 @@ function getFields(type, i, item = {}) {
         `,
         testimonials: `
             <input name="items[${i}][name]" class="form-control mb-2" value="${item.name || ''}" placeholder="Nama">
-            <textarea name="items[${i}][text]" class="form-control mb-2">${item.text || ''}</textarea>
-            ${item.image ? `<img src="/storage/${item.image}" width="100" class="mb-2 rounded">` : ''}
+            <textarea name="items[${i}][text]" class="form-control mb-2" rows="2">${item.text || ''}</textarea>
+            ${item.image ? `<img src="{{ asset('storage/${item.image}') }}" width="100" class="mb-2 rounded">` : ''}
             <input type="file" name="items[${i}][image]" class="form-control mb-2">
+            <small class="text-muted">Upload gambar baru untuk mengganti</small>
         `
     };
 
@@ -224,6 +226,11 @@ function renderItems() {
     const wrapper = document.getElementById('items-wrapper');
     wrapper.innerHTML = '';
 
+    if (items.length === 0) {
+        wrapper.innerHTML = '<div class="text-muted p-3 border rounded">Belum ada items. Klik "Tambah Item" untuk menambahkan.</div>';
+        return;
+    }
+
     items.forEach((item, i) => {
 
         const card = document.createElement('div');
@@ -231,12 +238,14 @@ function renderItems() {
 
         card.innerHTML = `
             ${getFields(currentType, i, item)}
-            <button type="button" class="btn btn-danger btn-sm mt-2">Hapus</button>
+            <button type="button" class="btn btn-danger btn-sm mt-2">🗑 Hapus Item</button>
         `;
 
         card.querySelector('button').onclick = () => {
-            items.splice(i, 1);
-            renderItems();
+            if (confirm('Yakin hapus item ini?')) {
+                items.splice(i, 1);
+                renderItems();
+            }
         };
 
         wrapper.appendChild(card);
@@ -247,6 +256,12 @@ function renderItems() {
 function addItem() {
     items.push({});
     renderItems();
+    // Scroll ke item terakhir
+    const wrapper = document.getElementById('items-wrapper');
+    const lastCard = wrapper.lastElementChild;
+    if (lastCard) {
+        lastCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 }
 
 // ================= INIT =================
@@ -256,29 +271,49 @@ function init() {
     const jsonManual = document.getElementById('jsonManual');
     const mainImage = document.getElementById('mainImage');
 
+    // Reset semua
     repeater.classList.add('d-none');
     jsonManual.classList.add('d-none');
     mainImage.classList.add('d-none');
 
+    // Tampilkan sesuai type
     if (currentType === 'hero') {
         mainImage.classList.remove('d-none');
     }
     else if (currentType === 'cta') {
         jsonManual.classList.remove('d-none');
     }
-    else {
+    else if (['destinations', 'schedule', 'features', 'testimonials'].includes(currentType)) {
         repeater.classList.remove('d-none');
         renderItems();
     }
+    else {
+        // Fallback: tampilkan JSON manual
+        jsonManual.classList.remove('d-none');
+    }
 }
 
-init();
+// Jalankan init setelah DOM ready
+document.addEventListener('DOMContentLoaded', init);
 
 // ================= PREVIEW =================
 function previewData() {
 
     const form = document.getElementById('sectionForm');
     const formData = new FormData(form);
+
+    // Tambahkan items dari state (untuk preview)
+    if (items.length > 0) {
+        items.forEach((item, i) => {
+            // FormData sudah handle file upload
+            // Tapi untuk text fields, kita tambahkan manual
+            Object.keys(item).forEach(key => {
+                if (key !== 'image' && item[key]) {
+                    formData.append(`items[${i}][${key}]`, item[key]);
+                }
+            });
+        });
+    }
 
     fetch("{{ route('landing.preview.store') }}", {
         method: 'POST',
@@ -288,11 +323,23 @@ function previewData() {
         body: formData
     })
     .then(res => res.json())
-    .then(() => {
-        document.getElementById('previewFrame').src =
-            "{{ route('landing.preview') }}?t=" + Date.now();
+    .then(data => {
+        if (data.success) {
+            document.getElementById('previewFrame').src =
+                "{{ route('landing.preview') }}?t=" + Date.now();
+        } else {
+            alert('Gagal preview. Cek console untuk detail.');
+        }
+    })
+    .catch(error => {
+        console.error('Preview error:', error);
+        alert('Terjadi kesalahan saat preview.');
     });
 }
+
+// Export ke global scope
+window.addItem = addItem;
+window.previewData = previewData;
 
 </script>
 @endpush
