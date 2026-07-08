@@ -372,17 +372,20 @@
         </section>
     @endif
 
-    {{-- ================= TESTIMONIAL ================= --}}
+    {{-- ================= TESTIMONIAL - FIXED ================= --}}
     @if ($testimonials && $testimonials->is_active)
-        <section class="testimonial-section section">
+        <section class="testimonial-section section"
+            style="padding: 60px 0; background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);">
             <div class="container">
 
                 <div class="text-center mb-5">
-                    <h2 class="text-white fw-bold">
+                    <h2 class="text-white fw-bold" style="font-size: 32px; font-weight: 700;">
                         {{ $testimonials->title ?? 'Testimonials' }}
                     </h2>
                     @if (!empty($testimonials->content))
-                        <p class="text-white-50">{{ $testimonials->content }}</p>
+                        <p class="text-white-50" style="font-size: 18px; opacity: 0.75;">
+                            {{ $testimonials->content }}
+                        </p>
                     @endif
                 </div>
 
@@ -393,47 +396,79 @@
                         $testimonialItems = array_filter($testimonialItems, function ($item) {
                             return !empty($item['name']) || !empty($item['text']);
                         });
+                        $testimonialItems = array_values($testimonialItems);
                     @endphp
 
                     @forelse($testimonialItems as $item)
                         <div class="col-md-4 mb-4">
 
-                            <div class="testimonial-card h-100 p-4">
+                            <div class="testimonial-card h-100 p-4"
+                                style="background: rgba(255,255,255,0.08);
+                                backdrop-filter: blur(10px);
+                                border-radius: 16px;
+                                border: 1px solid rgba(255,255,255,0.1);
+                                transition: transform 0.3s ease, box-shadow 0.3s ease;
+                                box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+                                display: flex;
+                                flex-direction: column;">
 
-                                <p class="fst-italic mb-4">
-                                    "{{ $item['text'] ?? '-' }}"
+                                {{-- QUOTE ICON --}}
+                                <div style="margin-bottom: 12px;">
+                                    <i class="fas fa-quote-left"
+                                        style="color: rgba(255,255,255,0.15); font-size: 24px;"></i>
+                                </div>
+
+                                {{-- TESTIMONIAL TEXT --}}
+                                <p class="fst-italic mb-4"
+                                    style="color: #e2e8f0; font-size: 15px; line-height: 1.6; flex: 1;">
+                                    "{{ $item['text'] ?? 'Pengalaman perjalanan yang luar biasa dengan GLADIS Travel.' }}"
                                 </p>
 
-                                <div class="d-flex align-items-center gap-3">
+                                {{-- USER SECTION --}}
+                                <div class="d-flex align-items-center gap-3" style="margin-top: auto;">
 
-                                    @if (!empty($item['image']))
+                                    {{-- AVATAR - FIXED: Check if image exists in storage --}}
+                                    @php
+                                        $hasImage =
+                                            !empty($item['image']) && Storage::disk('public')->exists($item['image']);
+                                    @endphp
+
+                                    @if ($hasImage)
                                         <img src="{{ img($item['image']) }}" alt="{{ $item['name'] ?? 'User' }}"
                                             class="testimonial-avatar rounded-circle"
-                                            style="width: 60px; height: 60px; object-fit: cover;" loading="lazy"
-                                            onerror="this.style.display='none'; this.parentElement.querySelector('.testimonial-avatar-placeholder').style.display='flex';">
-                                        <div class="testimonial-avatar-placeholder rounded-circle bg-secondary d-flex align-items-center justify-content-center"
-                                            style="display:none; width: 60px; height: 60px; background: #6c757d;">
-                                            <i class="fas fa-user text-white" style="font-size: 24px;"></i>
-                                        </div>
+                                            style="width: 60px; 
+                                           height: 60px; 
+                                           object-fit: cover; 
+                                           border: 2px solid rgba(255,255,255,0.2);
+                                           flex-shrink: 0;"
+                                            loading="lazy">
                                     @else
-                                        <div class="testimonial-avatar-placeholder rounded-circle bg-secondary d-flex align-items-center justify-content-center"
-                                            style="width: 60px; height: 60px; background: #6c757d;">
-                                            <i class="fas fa-user text-white" style="font-size: 24px;"></i>
+                                        {{-- FALLBACK AVATAR --}}
+                                        <div class="testimonial-avatar-placeholder rounded-circle d-flex align-items-center justify-content-center"
+                                            style="width: 60px; 
+                                            height: 60px; 
+                                            background: linear-gradient(135deg, #4a5568, #2d3748);
+                                            border: 2px solid rgba(255,255,255,0.2);
+                                            flex-shrink: 0;">
+                                            <i class="fas fa-user text-white" style="font-size: 24px; opacity: 0.5;"></i>
                                         </div>
                                     @endif
 
-                                    <div>
-                                        <div class="fw-bold text-white">
-                                            {{ $item['name'] ?? '-' }}
+                                    {{-- USER INFO --}}
+                                    <div style="flex: 1; min-width: 0;">
+                                        <div class="fw-bold text-white"
+                                            style="font-size: 16px; font-weight: 600; margin-bottom: 2px;">
+                                            {{ $item['name'] ?? 'Pengguna GLADIS' }}
                                         </div>
 
-                                        <small class="text-light opacity-75">
+                                        <small class="text-light opacity-75" style="font-size: 12px; display: block;">
+                                            <i class="fas fa-user-check me-1" style="font-size: 10px;"></i>
                                             {{ $item['role'] ?? 'Penumpang GLADIS' }}
                                         </small>
 
                                         @if (!empty($item['date']))
-                                            <br>
-                                            <small class="text-light opacity-50">
+                                            <small class="text-light opacity-50"
+                                                style="font-size: 11px; display: block; margin-top: 2px;">
                                                 <i class="far fa-calendar-alt me-1"></i>
                                                 {{ $item['date'] }}
                                             </small>
@@ -442,11 +477,13 @@
 
                                 </div>
 
+                                {{-- RATING --}}
                                 @if (!empty($item['rating']))
-                                    <div class="mt-2">
+                                    <div class="mt-3" style="display: flex; gap: 4px;">
                                         @for ($i = 1; $i <= 5; $i++)
-                                            <i
-                                                class="fas fa-star {{ $i <= $item['rating'] ? 'text-warning' : 'text-secondary' }}"></i>
+                                            <i class="fas fa-star"
+                                                style="color: {{ $i <= $item['rating'] ? '#fbbf24' : 'rgba(255,255,255,0.15)' }};
+                                              font-size: 14px;"></i>
                                         @endfor
                                     </div>
                                 @endif
@@ -456,9 +493,9 @@
                         </div>
                     @empty
                         <div class="col-12">
-                            <div class="text-center text-white py-5">
-                                <i class="fas fa-comment fa-3x mb-3 opacity-50"></i>
-                                <p>Belum ada testimonial</p>
+                            <div class="text-center text-white py-5" style="padding: 60px 0;">
+                                <i class="fas fa-comment fa-3x mb-3 opacity-50" style="color: rgba(255,255,255,0.3);"></i>
+                                <p style="color: rgba(255,255,255,0.6);">Belum ada testimonial</p>
                             </div>
                         </div>
                     @endforelse
