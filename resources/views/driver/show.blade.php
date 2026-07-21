@@ -5,295 +5,279 @@
 <div class="container">
     <h3 class="mb-4">🚗 Detail Booking</h3>
 
-    <div class="card shadow-sm border-0">
-        <div class="card-body">
+    <div class="row">
+        {{-- ================= KOLOM KIRI: INFORMASI ================= --}}
+        <div class="col-lg-5">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
 
-            @php
-                $schedule = $booking->schedule;
-                $cleanPhone = $booking->phone
-                    ? preg_replace('/[^0-9]/', '', $booking->phone)
-                    : null;
+                    @php
+                        $schedule = $booking->schedule;
+                        $cleanPhone = $booking->phone
+                            ? preg_replace('/[^0-9]/', '', $booking->phone)
+                            : null;
 
-                // 🔥 Koordinat Pool GLADIS (sesuaikan dengan lokasi sebenarnya)
-                $poolLat = -6.200000;  // Ganti dengan latitude pool GLADIS
-                $poolLng = 106.800000; // Ganti dengan longitude pool GLADIS
+                        // 🔥 Koordinat Pool GLADIS
+                        $poolLat = -6.32639;
+                        $poolLng = 108.32;
 
-                // 🔥 Parse koordinat pickup
-                $pickupLat = null;
-                $pickupLng = null;
-                $pickupValid = false;
-                $pickupDisplay = $booking->pickup_maps ?? '-';
+                        // 🔥 Parse koordinat pickup
+                        $pickupLat = null;
+                        $pickupLng = null;
+                        $pickupValid = false;
+                        $pickupDisplay = $booking->pickup_maps ?? '-';
 
-                if (!empty($booking->pickup_maps)) {
-                    $coordStr = trim($booking->pickup_maps);
+                        if (!empty($booking->pickup_maps)) {
+                            $coordStr = trim($booking->pickup_maps);
 
-                    // Format 1: -6.690587,108.446212
-                    if (strpos($coordStr, ',') !== false) {
-                        $parts = explode(',', $coordStr);
-                        if (count($parts) === 2) {
-                            $pickupLat = floatval(trim($parts[0]));
-                            $pickupLng = floatval(trim($parts[1]));
+                            if (strpos($coordStr, ',') !== false) {
+                                $parts = explode(',', $coordStr);
+                                if (count($parts) === 2) {
+                                    $pickupLat = floatval(trim($parts[0]));
+                                    $pickupLng = floatval(trim($parts[1]));
+                                }
+                            } elseif (strpos($coordStr, ' ') !== false) {
+                                $parts = explode(' ', $coordStr);
+                                if (count($parts) === 2) {
+                                    $pickupLat = floatval(trim($parts[0]));
+                                    $pickupLng = floatval(trim($parts[1]));
+                                }
+                            } else {
+                                preg_match('/([-+]?\d+\.\d+)([-+]?\d+\.\d+)/', $coordStr, $matches);
+                                if (count($matches) === 3) {
+                                    $pickupLat = floatval($matches[1]);
+                                    $pickupLng = floatval($matches[2]);
+                                }
+                            }
+
+                            if ($pickupLat !== null && $pickupLng !== null &&
+                                $pickupLat >= -90 && $pickupLat <= 90 &&
+                                $pickupLng >= -180 && $pickupLng <= 180) {
+                                $pickupValid = true;
+                                $pickupDisplay = number_format($pickupLat, 6) . ', ' . number_format($pickupLng, 6);
+                            }
                         }
-                    }
-                    // Format 2: -6.690587 108.446212
-                    elseif (strpos($coordStr, ' ') !== false) {
-                        $parts = explode(' ', $coordStr);
-                        if (count($parts) === 2) {
-                            $pickupLat = floatval(trim($parts[0]));
-                            $pickupLng = floatval(trim($parts[1]));
-                        }
-                    }
-                    // Format 3: -6.690587108.446212 (tanpa pemisah)
-                    else {
-                        preg_match('/([-+]?\d+\.\d+)([-+]?\d+\.\d+)/', $coordStr, $matches);
-                        if (count($matches) === 3) {
-                            $pickupLat = floatval($matches[1]);
-                            $pickupLng = floatval($matches[2]);
-                        }
-                    }
+                    @endphp
 
-                    // Validasi koordinat
-                    if ($pickupLat !== null && $pickupLng !== null &&
-                        $pickupLat >= -90 && $pickupLat <= 90 &&
-                        $pickupLng >= -180 && $pickupLng <= 180) {
-                        $pickupValid = true;
-                        $pickupDisplay = number_format($pickupLat, 6) . ', ' . number_format($pickupLng, 6);
-                    }
-                }
-            @endphp
+                    {{-- PENUMPANG --}}
+                    <div class="mb-3 pb-2 border-bottom">
+                        <label class="text-muted small">👤 Penumpang</label>
+                        <div class="fw-semibold">{{ optional($booking->user)->name ?? '-' }}</div>
+                    </div>
 
-            <div class="row g-3">
+                    {{-- WHATSAPP --}}
+                    <div class="mb-3 pb-2 border-bottom">
+                        <label class="text-muted small">📱 WhatsApp</label>
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            @if ($booking->phone)
+                                <a href="https://wa.me/{{ $cleanPhone }}" target="_blank" class="btn btn-success btn-sm">
+                                    💬 Hubungi
+                                </a>
+                                <span class="badge bg-light text-dark border">{{ $booking->phone }}</span>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="copyText('{{ $booking->phone }}', this)">
+                                    📋 Copy
+                                </button>
+                            @else
+                                <span class="text-muted">-</span>
+                            @endif
+                        </div>
+                    </div>
 
-                {{-- ================= PENUMPANG ================= --}}
-                <div class="col-md-6">
-                    <strong>👤 Penumpang</strong>
-                    <div>{{ optional($booking->user)->name ?? '-' }}</div>
-                </div>
+                    {{-- RUTE --}}
+                    <div class="mb-3 pb-2 border-bottom">
+                        <label class="text-muted small">🛣️ Rute</label>
+                        <div class="fw-semibold">
+                            {{ optional($schedule->origin)->name ?? '-' }}
+                            <i class="fas fa-arrow-right mx-1 text-muted"></i>
+                            {{ optional($schedule->destination)->name ?? '-' }}
+                        </div>
+                    </div>
 
-                {{-- ================= WHATSAPP ================= --}}
-                <div class="col-md-6">
-                    <strong>📱 WhatsApp</strong>
+                    {{-- TANGGAL --}}
+                    <div class="mb-3 pb-2 border-bottom">
+                        <label class="text-muted small">📅 Tanggal</label>
+                        <div class="fw-semibold">{{ $booking->formatted_date ?? '-' }}</div>
+                    </div>
 
-                    @if ($booking->phone)
-                        <div class="d-flex flex-wrap align-items-center gap-2 mt-1">
+                    {{-- KENDARAAN --}}
+                    <div class="mb-3 pb-2 border-bottom">
+                        <label class="text-muted small">🚐 Kendaraan</label>
+                        <div class="fw-semibold">{{ optional($schedule->vehicle)->name ?? '-' }}</div>
+                    </div>
 
-                            <a href="https://wa.me/{{ $cleanPhone }}"
-                               target="_blank"
-                               class="btn btn-success btn-sm">
-                                💬 Hubungi
-                            </a>
+                    {{-- KURSI --}}
+                    <div class="mb-3 pb-2 border-bottom">
+                        <label class="text-muted small">💺 Kursi</label>
+                        <div>
+                            @forelse ($booking->seats as $seat)
+                                <span class="badge bg-primary">{{ $seat->seat_number }}</span>
+                            @empty
+                                <span class="text-muted">-</span>
+                            @endforelse
+                        </div>
+                    </div>
 
-                            <span class="badge bg-light text-dark border">
-                                {{ $booking->phone }}
-                            </span>
+                    {{-- PICKUP --}}
+                    <div class="mb-3 pb-2 border-bottom">
+                        <label class="text-muted small">📌 Pickup</label>
+                        <div>
+                            @if ($booking->pickup_type === 'meeting_point')
+                                📍 {{ optional($booking->meetingPoint)->name ?? '-' }}
+                                <br>
+                                <small class="text-muted">Meeting Point</small>
+                            @else
+                                🗺️ Dijemput
+                                <br>
+                                <div class="d-flex flex-wrap align-items-center gap-2 mt-1">
+                                    <code class="bg-light p-1 rounded small">{{ $pickupDisplay }}</code>
+                                    @if($pickupValid)
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="copyText('{{ $pickupDisplay }}', this)">
+                                            📋 Copy
+                                        </button>
+                                        <a href="https://www.google.com/maps?q={{ $pickupLat }},{{ $pickupLng }}" target="_blank" class="btn btn-primary btn-sm">
+                                            🗺️ Maps
+                                        </a>
+                                    @endif
+                                </div>
+                                @if(!$pickupValid && !empty($booking->pickup_maps))
+                                    <small class="text-danger">Format koordinat tidak valid</small>
+                                @endif
+                            @endif
+                        </div>
+                    </div>
 
-                            <button type="button"
-                                    class="btn btn-outline-secondary btn-sm"
-                                    onclick="copyText('{{ $booking->phone }}', this)">
-                                📋 Copy
-                            </button>
+                    {{-- HARGA --}}
+                    <div class="mb-3 pb-2 border-bottom">
+                        <label class="text-muted small">💰 Estimasi Harga</label>
+                        <div class="text-success fw-bold fs-5">
+                            Rp {{ number_format($booking->price_estimation ?? 0, 0, ',', '.') }}
+                        </div>
+                    </div>
 
+                    {{-- STATUS --}}
+                    <div class="mb-3">
+                        <label class="text-muted small">Status</label>
+                        <div>
+                            @switch($booking->status)
+                                @case('pending')
+                                    <span class="badge bg-warning text-dark">⏳ Menunggu</span>
+                                    @break
+                                @case('confirmed')
+                                    <span class="badge bg-info">✅ Dikonfirmasi</span>
+                                    @break
+                                @case('completed')
+                                    <span class="badge bg-success">🎉 Selesai</span>
+                                    @break
+                                @default
+                                    <span class="badge bg-secondary">{{ $booking->status }}</span>
+                            @endswitch
+                        </div>
+                    </div>
+
+                    {{-- AKSI --}}
+                    @if ($booking->status === 'pending')
+                        <div class="mt-3">
+                            <form action="{{ route('driver.confirm', $booking->id) }}" method="POST" onsubmit="return confirm('Terima booking ini?')">
+                                @csrf
+                                <button class="btn btn-success w-100">
+                                    ✅ Terima Booking
+                                </button>
+                            </form>
                         </div>
                     @else
-                        <div class="text-muted">-</div>
+                        <div class="alert alert-info mt-3 mb-0">
+                            <i class="fas fa-info-circle"></i> Booking sudah diproses.
+                        </div>
                     @endif
-                </div>
 
-                {{-- ================= RUTE ================= --}}
-                <div class="col-md-6">
-                    <strong>🛣️ Rute</strong>
-                    <div>
-                        <b>{{ optional($schedule->origin)->name ?? '-' }}</b>
-                        →
-                        <b>{{ optional($schedule->destination)->name ?? '-' }}</b>
-                    </div>
                 </div>
+            </div>
+        </div>
 
-                {{-- ================= TANGGAL ================= --}}
-                <div class="col-md-6">
-                    <strong>📅 Tanggal</strong>
-                    <div>{{ $booking->formatted_date ?? '-' }}</div>
-                </div>
+        {{-- ================= KOLOM KANAN: MAP ================= --}}
+        <div class="col-lg-7 mt-3 mt-lg-0">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-0">
 
-                {{-- ================= KENDARAAN ================= --}}
-                <div class="col-md-6">
-                    <strong>🚐 Kendaraan</strong>
-                    <div>{{ optional($schedule->vehicle)->name ?? '-' }}</div>
-                </div>
-
-                {{-- ================= KURSI ================= --}}
-                <div class="col-md-6">
-                    <strong>💺 Kursi</strong>
-                    <div>
-                        @forelse ($booking->seats as $seat)
-                            <span class="badge bg-primary">
-                                {{ $seat->seat_number }}
-                            </span>
-                        @empty
-                            <span class="text-muted">-</span>
-                        @endforelse
-                    </div>
-                </div>
-
-                {{-- ================= PICKUP ================= --}}
-                <div class="col-md-6">
-                    <strong>📌 Pickup</strong>
-                    <div>
-                        @if ($booking->pickup_type === 'meeting_point')
-                            📍 {{ optional($booking->meetingPoint)->name ?? '-' }}
-                        @else
-                            🗺️ Dijemput
-                            <br>
-                            <div class="d-flex flex-wrap align-items-center gap-2 mt-1">
+                    {{-- 🔥 FIX: TAMPILKAN MAP JIKA ADA KOORDINAT VALID --}}
+                    @if($pickupValid)
+                        {{-- HEADER MAP --}}
+                        <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="mb-0">🗺️ Rute Penjemputan</h5>
                                 <small class="text-muted">
-                                    {{ $pickupDisplay }}
+                                    @if($booking->pickup_type === 'meeting_point')
+                                        📍 Meeting Point: {{ optional($booking->meetingPoint)->name ?? '-' }}
+                                    @else
+                                        🗺️ Dari Pool GLADIS → Lokasi Penjemputan
+                                    @endif
                                 </small>
-                                @if($pickupValid)
-                                    <button type="button"
-                                            class="btn btn-outline-secondary btn-sm"
-                                            onclick="copyText('{{ $pickupDisplay }}', this)">
-                                        📋 Copy
-                                    </button>
-                                    <a href="https://www.google.com/maps?q={{ $pickupLat }},{{ $pickupLng }}"
-                                       target="_blank"
-                                       class="btn btn-primary btn-sm">
-                                        🗺️ Buka Maps
-                                    </a>
-                                @endif
                             </div>
-                            @if(!$pickupValid && !empty($booking->pickup_maps))
-                                <br>
-                                <small class="text-danger">
-                                    <i class="fas fa-exclamation-triangle"></i>
-                                    Format koordinat tidak valid
-                                </small>
-                            @endif
-                        @endif
-                    </div>
-                </div>
-
-                {{-- ================= HARGA ================= --}}
-                <div class="col-md-6">
-                    <strong>💰 Estimasi Harga</strong>
-                    <div class="text-success fw-semibold">
-                        Rp {{ number_format($booking->price_estimation ?? 0, 0, ',', '.') }}
-                    </div>
-                </div>
-
-                {{-- ================= STATUS ================= --}}
-                <div class="col-12">
-                    <strong>Status</strong>
-                    <div class="mt-1">
-                        @switch($booking->status)
-                            @case('pending')
-                                <span class="badge bg-warning text-dark">Menunggu</span>
-                            @break
-
-                            @case('confirmed')
-                                <span class="badge bg-info">Dikonfirmasi</span>
-                            @break
-
-                            @case('completed')
-                                <span class="badge bg-success">Selesai</span>
-                            @break
-
-                            @default
-                                <span class="badge bg-secondary">{{ $booking->status }}</span>
-                        @endswitch
-                    </div>
-                </div>
-
-                {{-- ================= MAP PICKUP - DENGAN ROUTE ================= --}}
-                @if($booking->pickup_type === 'pickup' && $pickupValid)
-                    <div class="col-12 mt-3">
-                        <h5>🗺️ Rute Penjemputan</h5>
-                        <small class="text-muted d-block mb-2">
-                            Dari Pool GLADIS menuju lokasi penjemputan penumpang
-                        </small>
-
-                        <div id="pickupMap"
-                             style="height: 400px; width: 100%; border-radius: 12px;"
-                             class="border">
                         </div>
 
-                        {{-- Informasi jarak dan harga --}}
-                        <div class="mt-3 p-3 bg-light rounded">
-                            <div class="row g-3">
-                                <div class="col-md-4">
-                                    <b>📍 Titik Awal:</b>
-                                    <span class="text-muted d-block">Pool GLADIS</span>
-                                    <small class="text-muted">
-                                        {{ number_format($poolLat, 6) }}, {{ number_format($poolLng, 6) }}
-                                    </small>
-                                    <button type="button"
-                                            class="btn btn-outline-secondary btn-sm mt-1"
-                                            onclick="copyText('{{ number_format($poolLat, 6) }}, {{ number_format($poolLng, 6) }}', this)">
-                                        📋 Copy
-                                    </button>
+                        {{-- MAP --}}
+                        <div id="pickupMap" style="height: 500px; width: 100%;"></div>
+
+                        {{-- FOOTER MAP --}}
+                        <div class="p-3 bg-light border-top">
+                            <div class="row g-2 text-center">
+                                <div class="col-4">
+                                    <div class="p-2 bg-white rounded shadow-sm">
+                                        <div class="text-danger">🏠</div>
+                                        <small class="text-muted d-block">Pool GLADIS</small>
+                                        <small class="text-muted" style="font-size: 10px;">
+                                            {{ number_format($poolLat, 6) }}, {{ number_format($poolLng, 6) }}
+                                        </small>
+                                    </div>
                                 </div>
-                                <div class="col-md-4">
-                                    <b>📍 Titik Akhir:</b>
-                                    <span class="text-muted d-block">Lokasi Penjemputan</span>
-                                    <small class="text-muted">
-                                        {{ $pickupDisplay }}
-                                    </small>
-                                    <button type="button"
-                                            class="btn btn-outline-secondary btn-sm mt-1"
-                                            onclick="copyText('{{ $pickupDisplay }}', this)">
-                                        📋 Copy
-                                    </button>
-                                </div>
-                                <div class="col-md-4">
-                                    <b>🚗 Jarak:</b>
-                                    <span id="distance_text" class="text-primary fw-bold">-</span>
-                                    <span class="text-muted">KM</span>
-                                    <br>
-                                    <b>⏱️ Estimasi Waktu:</b>
-                                    <span id="time_text" class="text-primary fw-bold">-</span>
-                                    <span class="text-muted">menit</span>
+                                <div class="col-4">
+                                    <div class="p-2 bg-white rounded shadow-sm">
+                                        <div class="text-success">📍</div>
+                                        <small class="text-muted d-block">
+                                            @if($booking->pickup_type === 'meeting_point')
+                                                Meeting Point
+                                            @else
+                                                Penjemputan
+                                            @endif
+                                        </small>
+                                        <small class="text-muted" style="font-size: 10px;">
+                                            {{ $pickupDisplay }}
+                                        </small>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         <input type="hidden" name="pickup_maps" id="pickup_maps" value="{{ $booking->pickup_maps }}">
-                    </div>
-                @elseif($booking->pickup_type === 'pickup' && !empty($booking->pickup_maps))
-                    <div class="col-12 mt-3">
-                        <div class="alert alert-warning">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <strong>Koordinat tidak valid:</strong>
-                            {{ $booking->pickup_maps }}
-                            <br>
-                            <small>Pastikan format koordinat menggunakan koma atau spasi (contoh: -6.690587, 108.446212)</small>
+                    @elseif(!empty($booking->pickup_maps))
+                        {{-- Koordinat tidak valid --}}
+                        <div class="p-5 text-center">
+                            <i class="fas fa-exclamation-triangle text-warning fa-3x mb-3"></i>
+                            <h5>Koordinat tidak valid</h5>
+                            <p class="text-muted">{{ $booking->pickup_maps }}</p>
+                            <small class="text-muted">Pastikan format koordinat: -6.690587, 108.446212</small>
                         </div>
-                    </div>
-                @endif
+                    @else
+                        {{-- Tidak ada koordinat --}}
+                        <div class="p-5 text-center">
+                            <i class="fas fa-map-marked-alt text-muted fa-3x mb-3"></i>
+                            <h5>Lokasi tidak tersedia</h5>
+                            <p class="text-muted">
+                                @if($booking->pickup_type === 'meeting_point')
+                                    Penumpang memilih pickup di meeting point: 
+                                    <strong>{{ optional($booking->meetingPoint)->name ?? '-' }}</strong>
+                                @else
+                                    Penumpang belum menentukan lokasi pickup
+                                @endif
+                            </p>
+                        </div>
+                    @endif
 
+                </div>
             </div>
-
-            {{-- ================= AKSI ================= --}}
-            @if ($booking->status === 'pending')
-                <div class="d-flex flex-wrap gap-2 mt-4">
-
-                    <form action="{{ route('driver.confirm', $booking->id) }}"
-                          method="POST"
-                          onsubmit="return confirm('Terima booking ini?')">
-                        @csrf
-                        <button class="btn btn-success">
-                            ✅ Terima
-                        </button>
-                    </form>
-
-                </div>
-            @else
-                <div class="alert alert-info mt-4">
-                    Booking sudah diproses.
-                </div>
-            @endif
-
         </div>
-    </div>
 
+    </div>
 </div>
 
 @endsection
@@ -312,8 +296,7 @@
 
 <style>
     #pickupMap {
-        background: #f0f0f0;
-        min-height: 400px;
+        background: #e8ecf1;
     }
 
     .leaflet-routing-container {
@@ -344,43 +327,37 @@
         background: #dc3545;
         color: white;
         border-radius: 50%;
-        width: 36px;
-        height: 36px;
+        width: 40px;
+        height: 40px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 18px;
-        border: 2px solid white;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        font-size: 20px;
+        border: 3px solid white;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
     }
 
     .custom-div-icon .marker-pickup {
         background: #28a745;
         color: white;
         border-radius: 50%;
-        width: 36px;
-        height: 36px;
+        width: 40px;
+        height: 40px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 18px;
-        border: 2px solid white;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-    }
-
-    .btn-copy-success {
-        background: #28a745;
-        color: white;
-        border: none;
+        font-size: 20px;
+        border: 3px solid white;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
     }
 
     @media (max-width: 768px) {
         #pickupMap {
-            height: 300px !important;
+            height: 350px !important;
         }
 
         .leaflet-routing-container {
-            max-height: 150px;
+            max-height: 120px;
         }
     }
 </style>
@@ -406,7 +383,6 @@ function copyText(text, btn) {
             btn.innerHTML = originalText;
         }, 2000);
     }).catch(() => {
-        // Fallback
         const textarea = document.createElement('textarea');
         textarea.value = text;
         document.body.appendChild(textarea);
@@ -422,8 +398,22 @@ function copyText(text, btn) {
     });
 }
 
+// ================= UPDATE UI =================
+function updateUI(distance, time) {
+    const distanceText = distance + ' KM';
+    const timeText = time + ' menit';
+
+    const distanceBadge = document.getElementById('distance_badge');
+    const timeBadge = document.getElementById('time_badge');
+    const distanceFooter = document.getElementById('distance_footer');
+
+    if (distanceBadge) distanceBadge.textContent = distanceText;
+    if (timeBadge) timeBadge.textContent = timeText;
+    if (distanceFooter) distanceFooter.textContent = distanceText;
+}
+
 // ================= INISIALISASI MAP =================
-@if($booking->pickup_type === 'pickup' && $pickupValid)
+@if($pickupValid)
 
 document.addEventListener('DOMContentLoaded', function() {
     const pickupLat = {{ $pickupLat }};
@@ -436,7 +426,13 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('📍 Pickup:', pickupLat, pickupLng);
 
     // 🔥 Inisialisasi Map
-    const map = L.map('pickupMap').setView([poolLat, poolLng], 13);
+    const map = L.map('pickupMap', {
+        center: [poolLat, poolLng],
+        zoom: 13,
+        zoomControl: true,
+        fadeAnimation: true,
+        zoomAnimation: true
+    });
 
     // 🔥 Tile Layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -444,34 +440,41 @@ document.addEventListener('DOMContentLoaded', function() {
         maxZoom: 19
     }).addTo(map);
 
-    // 🔥 Custom Icon untuk Pool
+    // 🔥 Custom Icon Pool
     const poolIcon = L.divIcon({
         className: 'custom-div-icon',
         html: '<div class="marker-pool">🏠</div>',
-        iconSize: [36, 36],
-        iconAnchor: [18, 18],
-        popupAnchor: [0, -18]
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
+        popupAnchor: [0, -20]
     });
 
-    // 🔥 Custom Icon untuk Pickup
+    // 🔥 Custom Icon Pickup
     const pickupIcon = L.divIcon({
         className: 'custom-div-icon',
         html: '<div class="marker-pickup">📍</div>',
-        iconSize: [36, 36],
-        iconAnchor: [18, 18],
-        popupAnchor: [0, -18]
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
+        popupAnchor: [0, -20]
     });
 
     // 🔥 Marker Pool
     L.marker([poolLat, poolLng], { icon: poolIcon })
         .addTo(map)
-        .bindPopup('<b>🏠 Pool GLADIS</b><br>Titik Keberangkatan');
+        .bindPopup(`
+            <b>🏠 Pool GLADIS</b><br>
+            Titik Keberangkatan<br>
+            <small>${poolLat.toFixed(6)}, ${poolLng.toFixed(6)}</small>
+        `)
+        .openPopup();
 
     // 🔥 Marker Pickup
     L.marker([pickupLat, pickupLng], { icon: pickupIcon })
         .addTo(map)
-        .bindPopup('<b>📍 Lokasi Penjemputan</b><br>{{ $pickupDisplay }}')
-        .openPopup();
+        .bindPopup(`
+            <b>📍 Lokasi Penjemputan</b><br>
+            ${pickupLat.toFixed(6)}, ${pickupLng.toFixed(6)}
+        `);
 
     // 🔥 ROUTING MACHINE
     const routingControl = L.Routing.control({
@@ -492,8 +495,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 {
                     color: '#0d6efd',
                     opacity: 0.8,
-                    weight: 4,
-                    dashArray: '10, 8'
+                    weight: 5,
+                    dashArray: '12, 8'
                 }
             ],
             extendToWaypoints: true,
@@ -511,7 +514,7 @@ document.addEventListener('DOMContentLoaded', function() {
         })
     }).addTo(map);
 
-    // 🔥 Event listener untuk menangkap jarak
+    // 🔥 Event listener untuk routing
     routingControl.on('routesfound', function(e) {
         const routes = e.routes;
         if (routes.length > 0) {
@@ -519,21 +522,19 @@ document.addEventListener('DOMContentLoaded', function() {
             const distance = (route.summary.totalDistance / 1000).toFixed(1);
             const time = Math.round(route.summary.totalTime / 60);
 
-            document.getElementById('distance_text').textContent = distance;
-            document.getElementById('time_text').textContent = time;
-
+            updateUI(distance, time);
             console.log('🚗 Jarak:', distance, 'KM');
             console.log('⏱️ Waktu:', time, 'menit');
         }
     });
 
-    // 🔥 Fit bounds ke kedua marker
+    // 🔥 Fit bounds
     setTimeout(() => {
         const bounds = L.latLngBounds([
             [poolLat, poolLng],
             [pickupLat, pickupLng]
         ]);
-        map.fitBounds(bounds, { padding: [50, 50] });
+        map.fitBounds(bounds, { padding: [60, 60] });
     }, 500);
 
     // 🔥 Resize map
@@ -557,6 +558,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 map.invalidateSize();
             }, 500);
         }
+    });
+
+    // 🔥 Handle bootstrap modal/tab
+    document.addEventListener('shown.bs.tab', function() {
+        setTimeout(function() {
+            map.invalidateSize();
+        }, 500);
     });
 });
 
