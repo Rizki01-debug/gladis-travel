@@ -199,7 +199,6 @@
             <div class="card shadow-sm border-0">
                 <div class="card-body p-0">
 
-                    {{-- 🔥 FIX: TAMPILKAN MAP JIKA ADA KOORDINAT VALID --}}
                     @if($pickupValid)
                         {{-- HEADER MAP --}}
                         <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
@@ -220,9 +219,9 @@
 
                         {{-- FOOTER MAP --}}
                         <div class="p-3 bg-light border-top">
-                            <div class="row g-2 text-center">
-                                <div class="col-4">
-                                    <div class="p-2 bg-white rounded shadow-sm">
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <div class="p-2 bg-white rounded shadow-sm text-center">
                                         <div class="text-danger">🏠</div>
                                         <small class="text-muted d-block">Pool GLADIS</small>
                                         <small class="text-muted" style="font-size: 10px;">
@@ -230,8 +229,8 @@
                                         </small>
                                     </div>
                                 </div>
-                                <div class="col-4">
-                                    <div class="p-2 bg-white rounded shadow-sm">
+                                <div class="col-md-6">
+                                    <div class="p-2 bg-white rounded shadow-sm text-center">
                                         <div class="text-success">📍</div>
                                         <small class="text-muted d-block">
                                             @if($booking->pickup_type === 'meeting_point')
@@ -250,7 +249,6 @@
 
                         <input type="hidden" name="pickup_maps" id="pickup_maps" value="{{ $booking->pickup_maps }}">
                     @elseif(!empty($booking->pickup_maps))
-                        {{-- Koordinat tidak valid --}}
                         <div class="p-5 text-center">
                             <i class="fas fa-exclamation-triangle text-warning fa-3x mb-3"></i>
                             <h5>Koordinat tidak valid</h5>
@@ -258,7 +256,6 @@
                             <small class="text-muted">Pastikan format koordinat: -6.690587, 108.446212</small>
                         </div>
                     @else
-                        {{-- Tidak ada koordinat --}}
                         <div class="p-5 text-center">
                             <i class="fas fa-map-marked-alt text-muted fa-3x mb-3"></i>
                             <h5>Lokasi tidak tersedia</h5>
@@ -351,6 +348,17 @@
         box-shadow: 0 2px 10px rgba(0,0,0,0.3);
     }
 
+    /* Animasi garis mengikuti jalan */
+    .leaflet-routing-line {
+        animation: dash 1s linear infinite;
+    }
+
+    @keyframes dash {
+        to {
+            stroke-dashoffset: -20;
+        }
+    }
+
     @media (max-width: 768px) {
         #pickupMap {
             height: 350px !important;
@@ -403,13 +411,17 @@ function updateUI(distance, time) {
     const distanceText = distance + ' KM';
     const timeText = time + ' menit';
 
-    const distanceBadge = document.getElementById('distance_badge');
-    const timeBadge = document.getElementById('time_badge');
-    const distanceFooter = document.getElementById('distance_footer');
+    const elements = {
+        distance_badge: document.getElementById('distance_badge'),
+        time_badge: document.getElementById('time_badge'),
+        distance_footer: document.getElementById('distance_footer'),
+        time_footer: document.getElementById('time_footer')
+    };
 
-    if (distanceBadge) distanceBadge.textContent = distanceText;
-    if (timeBadge) timeBadge.textContent = timeText;
-    if (distanceFooter) distanceFooter.textContent = distanceText;
+    if (elements.distance_badge) elements.distance_badge.textContent = distanceText;
+    if (elements.time_badge) elements.time_badge.textContent = timeText;
+    if (elements.distance_footer) elements.distance_footer.textContent = distanceText;
+    if (elements.time_footer) elements.time_footer.textContent = timeText;
 }
 
 // ================= INISIALISASI MAP =================
@@ -476,59 +488,97 @@ document.addEventListener('DOMContentLoaded', function() {
             ${pickupLat.toFixed(6)}, ${pickupLng.toFixed(6)}
         `);
 
-    // 🔥 ROUTING MACHINE
-    const routingControl = L.Routing.control({
-        waypoints: [
-            L.latLng(poolLat, poolLng),
-            L.latLng(pickupLat, pickupLng)
-        ],
-        routeWhileDragging: false,
-        draggableWaypoints: false,
-        addWaypoints: false,
-        fitSelectedRoutes: true,
-        showAlternatives: false,
-        createMarker: function(i, wp) {
-            return null;
-        },
-        lineOptions: {
-            styles: [
-                {
-                    color: '#0d6efd',
-                    opacity: 0.8,
-                    weight: 5,
-                    dashArray: '12, 8'
-                }
+    // ================= ROUTING MACHINE =================
+    // 🔥 SAMA SEPERTI VERSI PENUMPANG
+    // Garis akan mengikuti jalan (bukan garis lurus)
+
+    let routingControl = null;
+
+    try {
+        routingControl = L.Routing.control({
+            waypoints: [
+                L.latLng(poolLat, poolLng),
+                L.latLng(pickupLat, pickupLng)
             ],
-            extendToWaypoints: true,
-            missingRouteTolerance: 0
-        },
-        router: L.Routing.osrmv1({
-            serviceUrl: 'https://router.project-osrm.org/route/v1',
-            profile: 'driving'
-        }),
-        formatter: new L.Routing.Formatter({
-            units: 'metric',
-            roundingSensitivity: 1,
-            distanceTemplate: '{distance} km',
-            timeTemplate: '{time} menit'
-        })
-    }).addTo(map);
+            routeWhileDragging: false,
+            draggableWaypoints: false,
+            addWaypoints: false,
+            fitSelectedRoutes: true,
+            showAlternatives: false,
+            createMarker: function(i, wp) {
+                return null;
+            },
+            lineOptions: {
+                styles: [
+                    {
+                        color: '#0d6efd',
+                        opacity: 0.9,
+                        weight: 5
+                    }
+                ],
+                extendToWaypoints: true,
+                missingRouteTolerance: 0
+            },
+            router: L.Routing.osrmv1({
+                serviceUrl: 'https://router.project-osrm.org/route/v1',
+                profile: 'driving'
+            }),
+            formatter: new L.Routing.Formatter({
+                units: 'metric',
+                roundingSensitivity: 1,
+                distanceTemplate: '{distance} km',
+                timeTemplate: '{time} menit'
+            })
+        }).addTo(map);
 
-    // 🔥 Event listener untuk routing
-    routingControl.on('routesfound', function(e) {
-        const routes = e.routes;
-        if (routes.length > 0) {
-            const route = routes[0];
-            const distance = (route.summary.totalDistance / 1000).toFixed(1);
-            const time = Math.round(route.summary.totalTime / 60);
+        // 🔥 Event listener untuk routing
+        routingControl.on('routesfound', function(e) {
+            const routes = e.routes;
+            if (routes.length > 0) {
+                const route = routes[0];
+                const distance = (route.summary.totalDistance / 1000).toFixed(1);
+                const time = Math.round(route.summary.totalTime / 60);
 
-            updateUI(distance, time);
-            console.log('🚗 Jarak:', distance, 'KM');
-            console.log('⏱️ Waktu:', time, 'menit');
-        }
-    });
+                updateUI(distance, time);
+                console.log('✅ Rute mengikuti jalan ditemukan!');
+                console.log('   📏 Jarak:', distance, 'KM');
+                console.log('   ⏱️ Waktu:', time, 'menit');
+                console.log('   🛣️ Jumlah instruksi:', route.instructions.length);
+            }
+        });
 
-    // 🔥 Fit bounds
+        routingControl.on('routingerror', function(e) {
+            console.warn('⚠️ Routing error:', e.error);
+            updateUI('?', '?');
+        });
+
+        routingControl.on('routingstart', function() {
+            console.log('🔄 Menghitung rute tercepat...');
+        });
+
+        routingControl.on('routingend', function() {
+            console.log('✅ Selesai menghitung rute');
+        });
+
+    } catch (error) {
+        console.error('❌ Error routing:', error);
+        updateUI('?', '?');
+
+        // 🔥 FALLBACK: GARIS LURUS JIKA ROUTING GAGAL
+        const latlngs = [
+            [poolLat, poolLng],
+            [pickupLat, pickupLng]
+        ];
+
+        L.polyline(latlngs, {
+            color: '#dc3545',
+            weight: 4,
+            opacity: 0.7,
+            dashArray: '10, 8'
+        }).addTo(map);
+    }
+
+    // 🔥 Fit bounds ke kedua marker
     setTimeout(() => {
         const bounds = L.latLngBounds([
             [poolLat, poolLng],
