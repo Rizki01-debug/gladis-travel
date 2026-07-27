@@ -14,7 +14,7 @@
     <div class="row g-3">
 
         {{-- TOTAL PEMASUKAN --}}
-        <div class="col-md-4">
+        <div class="col-md-6">
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-body">
                     <h6 class="text-muted">Total Pemasukan</h6>
@@ -25,7 +25,7 @@
             </div>
         </div>
 
-        {{-- BELUM DISETOR --}}
+        {{-- BELUM DISETOR
         <div class="col-md-4">
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-body">
@@ -35,10 +35,10 @@
                     </h3>
                 </div>
             </div>
-        </div>
+        </div> --}}
 
         {{-- TOTAL TRANSAKSI --}}
-        <div class="col-md-4">
+        <div class="col-md-6">
             <div class="card shadow-sm border-0 h-100">
                 <div class="card-body">
                     <h6 class="text-muted">Total Transaksi</h6>

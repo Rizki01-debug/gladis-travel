@@ -5,11 +5,13 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 use App\Models\Expense;
 use App\Models\Transaction;
 use App\Models\DriverEarning;
+use App\Models\Payment;
 
 class FinanceController extends Controller
 {
@@ -227,17 +229,34 @@ class FinanceController extends Controller
     {
         $this->authorizeFinance();
 
-        // 🔥 FIX N+1 QUERY (WAJIB)
+        // 🔥 TAMPILKAN HANYA YANG UNPAID DAN CASH
         $earnings = DriverEarning::with([
             'driver',
             'booking.user',
             'booking.schedule.origin',
             'booking.schedule.destination'
         ])
-            ->latest()
-            ->paginate(10);
+        ->where('status', 'unpaid') // 🔥 HANYA YANG BELUM DIBAYAR
+        ->whereHas('booking', function ($q) {
+            $q->where('payment_method', 'cash'); // 🔥 HANYA CASH
+        })
+        ->latest()
+        ->paginate(10);
 
-        return view('finance.setoran', compact('earnings'));
+        // 🔥 STATISTIK SETORAN
+        $totalUnpaid = DriverEarning::where('status', 'unpaid')
+            ->whereHas('booking', function ($q) {
+                $q->where('payment_method', 'cash');
+            })
+            ->sum('amount');
+
+        $totalPaid = DriverEarning::where('status', 'paid')
+            ->whereHas('booking', function ($q) {
+                $q->where('payment_method', 'cash');
+            })
+            ->sum('amount');
+
+        return view('finance.setoran', compact('earnings', 'totalUnpaid', 'totalPaid'));
     }
 
     // ================= CONFIRM SETORAN =================
@@ -246,10 +265,10 @@ class FinanceController extends Controller
         $this->authorizeFinance();
 
         try {
-
             DB::transaction(function () use ($id) {
 
                 $earning = DriverEarning::lockForUpdate()
+                    ->with('booking')
                     ->findOrFail($id);
 
                 // ================= VALIDASI STATUS =================
@@ -259,6 +278,12 @@ class FinanceController extends Controller
 
                 if ($earning->status === 'cancelled') {
                     throw new \Exception('Booking telah dibatalkan dan tidak dapat dikonfirmasi');
+                }
+
+                // 🔥 CEK METODE PEMBAYARAN
+                $booking = $earning->booking;
+                if ($booking && $booking->payment_method === 'online') {
+                    throw new \Exception('Booking ini sudah dibayar online, tidak perlu konfirmasi manual');
                 }
 
                 // ================= UPDATE STATUS =================
@@ -272,31 +297,145 @@ class FinanceController extends Controller
                     ->exists();
 
                 if (!$exists) {
-
                     Transaction::create([
                         'booking_id' => $earning->booking_id,
                         'amount' => $earning->amount,
                         'type' => 'income',
                         'payment_method' => 'cash',
-                        'status' => 'paid'
+                        'status' => 'paid',
+                        'description' => 'Setoran tunai driver - Booking #' . $earning->booking_id
                     ]);
                 }
 
-                logActivity(
-                    'Setoran Driver',
-                    'Earning ID: ' . $earning->id
-                );
+                logActivity('Konfirmasi Setoran Driver (Cash)', 'Earning ID: ' . $earning->id);
+
             });
 
-            return back()->with(
-                'success',
-                'Setoran berhasil dikonfirmasi!'
-            );
+            return back()->with('success', 'Setoran berhasil dikonfirmasi!');
+            
         } catch (\Exception $e) {
-
-            return back()->withErrors(
-                $e->getMessage()
-            );
+            return back()->withErrors($e->getMessage());
         }
+    }
+
+    // ================= 🔥 TAMBAH: CREATE INCOME FROM PAYMENT =================
+    /**
+     * Create income transaction from payment success
+     * 
+     * @param Payment $payment
+     * @return void
+     */
+    public function createIncomeFromPayment(Payment $payment)
+    {
+        try {
+            // Validasi payment
+            if (!$payment || $payment->status !== 'success') {
+                Log::warning('Invalid payment for income creation', [
+                    'payment_id' => $payment->id ?? null,
+                    'status' => $payment->status ?? null
+                ]);
+                return;
+            }
+
+            // Cek apakah sudah ada transaction untuk booking ini
+            $exists = Transaction::where('booking_id', $payment->booking_id)
+                ->where('type', 'income')
+                ->exists();
+
+            if ($exists) {
+                Log::info('Transaction already exists for booking', [
+                    'booking_id' => $payment->booking_id
+                ]);
+                return;
+            }
+
+            // Buat transaction
+            $transaction = Transaction::create([
+                'booking_id' => $payment->booking_id,
+                'amount' => $payment->gross_amount,
+                'type' => 'income',
+                'payment_method' => $payment->payment_method ?? 'online',
+                'status' => 'paid',
+                'description' => 'Pembayaran online via Midtrans - Order: ' . $payment->order_id,
+                'payment_id' => $payment->id,
+                'paid_at' => $payment->paid_at ?? now()
+            ]);
+
+            Log::info('Income created from payment success', [
+                'payment_id' => $payment->id,
+                'transaction_id' => $transaction->id,
+                'booking_id' => $payment->booking_id,
+                'amount' => $payment->gross_amount
+            ]);
+
+            // 🔥 Update status booking jika perlu
+            $booking = $payment->booking;
+            if ($booking && $booking->status === 'pending') {
+                $booking->update([
+                    'status' => 'confirmed'
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            Log::error('Error creating income from payment: ' . $e->getMessage(), [
+                'payment_id' => $payment->id ?? null,
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+    }
+
+    // ================= 🔥 TAMBAH: GET PAYMENT TRANSACTIONS =================
+    /**
+     * Get all payment transactions
+     */
+    public function paymentTransactions()
+    {
+        $this->authorizeFinance();
+
+        $transactions = Transaction::with(['booking', 'payment'])
+            ->where('type', 'income')
+            ->whereNotNull('payment_id')
+            ->latest()
+            ->paginate(15);
+
+        $totalPaymentIncome = Transaction::where('type', 'income')
+            ->whereNotNull('payment_id')
+            ->sum('amount');
+
+        $totalCashIncome = Transaction::where('type', 'income')
+            ->where('payment_method', 'cash')
+            ->sum('amount');
+
+        return view('finance.payment_transactions', compact(
+            'transactions',
+            'totalPaymentIncome',
+            'totalCashIncome'
+        ));
+    }
+
+    // ================= 🔥 TAMBAH: PAYMENT STATISTICS =================
+    /**
+     * Get payment statistics
+     */
+    public function paymentStatistics()
+    {
+        $this->authorizeFinance();
+
+        $stats = [
+            'total_online_payments' => Payment::where('status', 'success')->count(),
+            'total_online_amount' => Payment::where('status', 'success')->sum('gross_amount'),
+            'total_pending' => Payment::where('status', 'pending')->count(),
+            'total_failed' => Payment::where('status', 'failed')->count(),
+            'total_expired' => Payment::where('status', 'expired')->count(),
+            'by_method' => Payment::where('status', 'success')
+                ->selectRaw('payment_method, COUNT(*) as total, SUM(gross_amount) as amount')
+                ->groupBy('payment_method')
+                ->get()
+        ];
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $stats
+        ]);
     }
 }

@@ -109,6 +109,65 @@
                 </div>
             </div>
 
+            {{-- ================= 🔥 METODE PEMBAYARAN ================= --}}
+            <div class="mb-4">
+                <h5 class="fw-bold mb-3">💳 Pilih Metode Pembayaran</h5>
+                
+                <div class="row">
+                    {{-- Online Payment --}}
+                    <div class="col-md-12 mb-2">
+                        <div class="payment-method border rounded p-3 {{ old('payment_method') == 'online' ? 'border-primary bg-light' : '' }}">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="payment_method" 
+                                       value="online" id="payment_online" checked>
+                                <label class="form-check-label w-100" for="payment_online">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span>
+                                            <i class="fas fa-credit-card text-primary me-2"></i>
+                                            <strong>Bayar Online</strong>
+                                            <br>
+                                            <small class="text-muted">Via Midtrans (Kartu Kredit, Bank Transfer, QRIS, E-Wallet)</small>
+                                        </span>
+                                        <span class="badge bg-primary">Midtrans</span>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Cash / Bayar di Tempat --}}
+                    {{-- <div class="col-md-6 mb-2">
+                        <div class="payment-method border rounded p-3 {{ old('payment_method') == 'cash' ? 'border-primary bg-light' : '' }}">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="payment_method" 
+                                       value="cash" id="payment_cash">
+                                <label class="form-check-label w-100" for="payment_cash">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span>
+                                            <i class="fas fa-money-bill-wave text-success me-2"></i>
+                                            <strong>Bayar di Tempat</strong>
+                                            <br>
+                                            <small class="text-muted">Bayar langsung ke driver saat naik</small>
+                                        </span>
+                                        <span class="badge bg-success">Cash</span>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                    </div> --}}
+                </div>
+
+                {{-- Info tambahan --}}
+                <div class="alert alert-info mt-2" id="payment_info_online">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Anda akan diarahkan ke halaman pembayaran setelah booking berhasil.
+                </div>
+                {{-- <div class="alert alert-warning mt-2 d-none" id="payment_info_cash">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Pembayaran dilakukan langsung kepada driver saat naik kendaraan.
+                </div> --}}
+            </div>
+
             <button class="btn btn-success w-100">
                 🚀 Booking Sekarang
             </button>
@@ -116,6 +175,76 @@
         </form>
     </div>
 @endsection
+
+@push('styles')
+<style>
+    .payment-method {
+        cursor: pointer;
+        transition: all 0.3s ease;
+        height: 100%;
+    }
+    .payment-method:hover {
+        border-color: #0d6efd !important;
+        background-color: #f8f9fa;
+    }
+    .payment-method:has(input[type="radio"]:checked) {
+        border-color: #0d6efd !important;
+        background-color: #e7f1ff !important;
+    }
+    .payment-method label {
+        cursor: pointer;
+        margin: 0;
+    }
+    .payment-method input[type="radio"] {
+        margin-top: 0.5rem;
+    }
+    .seat-box {
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        font-weight: bold;
+        cursor: default;
+        border: 2px solid #ddd;
+        background: #f8f9fa;
+        transition: 0.2s;
+    }
+    .seat-available {
+        cursor: pointer;
+        border-color: #198754;
+        background: #d1e7dd;
+    }
+    .seat-available:hover {
+        background: #a3cfbb;
+        transform: scale(1.05);
+    }
+    .seat-checkbox {
+        display: none;
+    }
+    .seat-checkbox:checked + .seat-available {
+        background: #0d6efd;
+        border-color: #0d6efd;
+        color: white;
+        transform: scale(1.05);
+    }
+    .seat-disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    .seat-driver {
+        background: #f8d7da;
+        border-color: #dc3545;
+        color: #dc3545;
+    }
+    .seat-booked {
+        background: #e2e3e5;
+        border-color: #6c757d;
+        color: #6c757d;
+    }
+</style>
+@endpush
 
 @push('scripts')
     <script>
@@ -138,6 +267,12 @@
             const priceInput = document.getElementById('price_total');
             const pickupMaps = document.getElementById('pickup_maps');
 
+            // 🔥 Payment method elements
+            const paymentOnline = document.getElementById('payment_online');
+            const paymentCash = document.getElementById('payment_cash');
+            const infoOnline = document.getElementById('payment_info_online');
+            const infoCash = document.getElementById('payment_info_cash');
+
             let map = L.map('map').setView(origin, 9);
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -146,6 +281,31 @@
 
             let routingControl = null;
             let markers = [];
+
+            // ================= PAYMENT METHOD TOGGLE =================
+            function togglePaymentInfo() {
+                if (paymentOnline.checked) {
+                    infoOnline.classList.remove('d-none');
+                    infoCash.classList.add('d-none');
+                } else {
+                    infoOnline.classList.add('d-none');
+                    infoCash.classList.remove('d-none');
+                }
+            }
+
+            paymentOnline.addEventListener('change', togglePaymentInfo);
+            paymentCash.addEventListener('change', togglePaymentInfo);
+
+            // Click on payment method card
+            document.querySelectorAll('.payment-method').forEach(function(card) {
+                card.addEventListener('click', function() {
+                    const radio = this.querySelector('input[type="radio"]');
+                    if (radio) {
+                        radio.checked = true;
+                        togglePaymentInfo();
+                    }
+                });
+            });
 
             // ================= CLEAR =================
             function clearRoute() {
@@ -277,5 +437,28 @@
             });
 
         });
+
+        // ================= VALIDATION =================
+        function validateBooking() {
+            const seats = document.querySelectorAll('.seat-checkbox:checked');
+            if (seats.length === 0) {
+                alert('Pilih minimal 1 kursi!');
+                return false;
+            }
+
+            const paymentMethod = document.querySelector('input[name="payment_method"]:checked');
+            if (!paymentMethod) {
+                alert('Pilih metode pembayaran!');
+                return false;
+            }
+
+            const distance = document.getElementById('distance_km').value;
+            if (!distance || distance <= 0) {
+                alert('Jarak tidak valid!');
+                return false;
+            }
+
+            return true;
+        }
     </script>
 @endpush

@@ -128,7 +128,10 @@ class BookingController extends Controller
             'pickup_maps' => 'nullable|string',
 
             'distance_km' => 'required|numeric|min:1',
-            'price_total' => 'required|numeric|min:1000'
+            'price_total' => 'required|numeric|min:1000',
+
+            // 🔥 TAMBAHKAN VALIDASI PAYMENT METHOD
+            'payment_method' => 'required|in:online,cash'
         ]);
 
         $schedule = DepartureSchedule::with(['vehicle', 'routePoints.meetingPoint'])
@@ -227,7 +230,7 @@ class BookingController extends Controller
                 $totalRaw = $pricePerSeat * count($validated['seat_id']);
                 $serverPrice = ceil($totalRaw / 1000) * 1000;
 
-                // Pengembangan Selanjutnya 
+                // ================= ANTI MANIPULASI (DINONAKTIFKAN) =================
                 // // ================= ANTI MANIPULASI =================
                 // if (abs($serverPrice - $frontendPrice) > 50000) {
                 //     throw new \Exception('Harga tidak valid');
@@ -244,7 +247,8 @@ class BookingController extends Controller
                     'phone' => $validated['phone'],
                     'distance_km' => $distance,
                     'price_estimation' => $serverPrice,
-                    'status' => 'pending'
+                    'status' => 'pending',
+                    'payment_method' => $validated['payment_method'] // 🔥 SIMPAN PAYMENT METHOD
                 ]);
 
                 // ================= INSERT SEATS =================
@@ -269,8 +273,16 @@ class BookingController extends Controller
 
                 logActivity('Booking', 'Booking ID: ' . $booking->id);
 
-                return redirect()->route('booking.my')
-                    ->with('success', 'Booking berhasil!');
+                // ================= 🔥 REDIRECT BERDASARKAN METODE PEMBAYARAN =================
+                if ($validated['payment_method'] === 'online') {
+                    // 🔥 Online Payment - Redirect ke halaman pembayaran Midtrans
+                    return redirect()->route('payment.index', ['booking' => $booking->id])
+                        ->with('success', 'Booking berhasil! Silakan lanjutkan ke pembayaran.');
+                } else {
+                    // 🔥 Cash Payment - Redirect ke halaman My Booking
+                    return redirect()->route('booking.my')
+                        ->with('success', 'Booking berhasil! Silakan bayar langsung ke driver saat naik kendaraan.');
+                }
             });
         } catch (\Throwable $e) {
             return back()->withErrors($e->getMessage())->withInput();

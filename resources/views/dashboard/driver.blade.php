@@ -42,23 +42,23 @@
         {{-- ================= BREAKDOWN ================= --}}
         <div class="row g-3 mt-1">
 
-            <div class="col-md-6">
+            {{-- <div class="col-md-6">
                 <div class="card card-premium p-3 border-0 h-100">
                     <small class="text-muted">Belum Disetor</small>
                     <h4 class="fw-bold text-warning">
                         Rp {{ number_format($unpaidEarning ?? 0, 0, ',', '.') }}
                     </h4>
                 </div>
-            </div>
+            </div> --}}
 
-            <div class="col-md-6">
+            {{-- <div class="col-md-6">
                 <div class="card card-premium p-3 border-0 h-100">
                     <small class="text-muted">Sudah Disetor</small>
                     <h4 class="fw-bold text-success">
                         Rp {{ number_format($paidEarning ?? 0, 0, ',', '.') }}
                     </h4>
                 </div>
-            </div>
+            </div> --}}
 
         </div>
 

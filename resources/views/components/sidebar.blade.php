@@ -126,11 +126,11 @@
                     </a>
                 @endif
 
-                @if (canAccess('setoran'))
+                {{-- @if (canAccess('setoran'))
                     <a href="{{ route('finance.setoran') }}" class="nav-link {{ active('finance.setoran') }}">
                         <i class="bi bi-credit-card me-2"></i> Setoran Driver
                     </a>
-                @endif
+                @endif --}}
 
                 @if ($user->isDriver() && canAccess('earnings'))
                     <a href="{{ route('driver.earnings') }}" class="nav-link {{ active('driver.earnings') }}">

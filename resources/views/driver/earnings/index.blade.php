@@ -22,7 +22,7 @@
     <div class="row g-3 mb-4">
 
         {{-- TOTAL --}}
-        <div class="col-md-4">
+        <div class="col-md-12">
             <div class="card card-premium border-0 shadow-sm h-100">
 
                 <div class="card-body">
@@ -41,7 +41,7 @@
         </div>
 
         {{-- PAID --}}
-        <div class="col-md-4">
+        {{-- <div class="col-md-4">
             <div class="card card-premium border-0 shadow-sm h-100">
 
                 <div class="card-body">
@@ -57,10 +57,10 @@
                 </div>
 
             </div>
-        </div>
+        </div> --}}
 
         {{-- UNPAID --}}
-        <div class="col-md-4">
+        {{-- <div class="col-md-4">
             <div class="card card-premium border-0 shadow-sm h-100">
 
                 <div class="card-body">
@@ -76,7 +76,7 @@
                 </div>
 
             </div>
-        </div>
+        </div> --}}
 
     </div>
 
@@ -93,7 +93,7 @@
                     <thead class="table-light">
 
                         <tr class="text-center align-middle">
-                            <th width="10%">#Booking</th>
+                            <th width="10%">Booking</th>
                             <th width="25%">Driver</th>
                             <th width="20%">Nominal</th>
                             <th width="20%">Status</th>
@@ -111,7 +111,7 @@
 
                                 {{-- BOOKING --}}
                                 <td class="text-center fw-semibold">
-                                    #{{ $e->booking_id }}
+                                    {{ $e->booking_id }}
                                 </td>
 
                                 {{-- DRIVER --}}

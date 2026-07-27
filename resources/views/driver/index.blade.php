@@ -20,7 +20,7 @@
 
                         <thead>
                             <tr class="text-center">
-                                <th>#</th>
+                                <th>No</th>
                                 <th class="text-start">Penumpang</th>
                                 <th>WA</th>
                                 <th class="text-start">Rute</th>
@@ -37,7 +37,7 @@
 
                                     {{-- ID --}}
                                     <td class="text-center fw-semibold">
-                                        #{{ $b->id }}
+                                        {{ $b->id }}
                                     </td>
 
                                     {{-- PENUMPANG --}}

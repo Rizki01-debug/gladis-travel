@@ -18,7 +18,8 @@ class Booking extends Model
         'phone',
         'distance_km',
         'price_estimation',
-        'status'
+        'status',
+        'payment_method'
     ];
 
     // ================= CAST =================
@@ -71,6 +72,12 @@ class Booking extends Model
         return $this->hasOne(DriverEarning::class);
     }
 
+    // 🔥 PAYMENT (TAMBAHKAN INI)
+    public function payment()
+    {
+        return $this->hasOne(Payment::class);
+    }
+
     // ================= HELPER =================
 
     // 🔥 FORMAT TANGGAL (AMAN)
@@ -119,5 +126,23 @@ class Booking extends Model
     public function canBeCancelled(): bool
     {
         return $this->status === 'pending';
+    }
+
+    // 🔥 TAMBAHKAN HELPER UNTUK PAYMENT (Opsional)
+    
+    /**
+     * Cek apakah booking sudah dibayar
+     */
+    public function isPaid(): bool
+    {
+        return $this->payment && $this->payment->status === 'success';
+    }
+
+    /**
+     * Cek apakah booking memiliki payment
+     */
+    public function hasPayment(): bool
+    {
+        return $this->payment()->exists();
     }
 }

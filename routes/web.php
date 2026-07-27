@@ -20,6 +20,7 @@ use App\Http\Controllers\LandingController;
 use App\Http\Controllers\Admin\SectionController;
 use App\Http\Controllers\Admin\WebSettingController;
 use App\Http\Controllers\PassengerProfileController;
+use App\Http\Controllers\PaymentController; // 🔥 TAMBAHKAN INI
 
 /*
 |--------------------------------------------------------------------------
@@ -195,6 +196,46 @@ Route::middleware(['auth'])->group(function () {
 
     /*
     |--------------------------------------------------------------------------
+    | 🔥 PAYMENT (TAMBAHKAN INI)
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('payment')
+        ->middleware('feature:booking') // Menggunakan fitur booking karena terkait
+        ->name('payment.')
+        ->group(function () {
+
+            // Halaman pilih metode pembayaran
+            Route::get('/{booking}', [PaymentController::class, 'index'])
+                ->name('index');
+
+            // Generate Snap Token Midtrans
+            Route::post('/snap/{booking}', [PaymentController::class, 'createSnap'])
+                ->name('snap');
+
+            // Callback dari Midtrans (tanpa auth)
+            Route::post('/callback', [PaymentController::class, 'callback'])
+                ->name('callback')
+                ->withoutMiddleware(['auth']); // 🔥 Penting: callback tanpa auth
+
+            // Halaman sukses
+            Route::get('/success', [PaymentController::class, 'success'])
+                ->name('success');
+
+            // Halaman gagal
+            Route::get('/failed', [PaymentController::class, 'failed'])
+                ->name('failed');
+
+            // Cek status payment (API)
+            Route::get('/status/{orderId}', [PaymentController::class, 'checkStatus'])
+                ->name('status');
+
+            // Cancel/Expire payment
+            Route::post('/cancel/{orderId}', [PaymentController::class, 'cancel'])
+                ->name('cancel');
+        });
+
+    /*
+    |--------------------------------------------------------------------------
     | DRIVER
     |--------------------------------------------------------------------------
     */
@@ -301,4 +342,51 @@ Route::get('/test-driver', fn() => route('driver.index'));
 | AUTH (DEFAULT)
 |--------------------------------------------------------------------------
 */
+
+/*
+|--------------------------------------------------------------------------
+| TEST MIDTRANS
+|--------------------------------------------------------------------------
+*/
+Route::get('/test-midtrans', function () {
+    try {
+        $service = new App\Services\MidtransService();
+        
+        // Test data
+        $testData = [
+            'order_id' => 'TEST-' . time(),
+            'gross_amount' => 10000,
+            'customer_name' => 'Test Customer',
+            'customer_email' => 'test@example.com',
+            'customer_phone' => '081234567890',
+            'items' => [
+                [
+                    'id' => 'TEST-ITEM',
+                    'price' => 10000,
+                    'quantity' => 1,
+                    'name' => 'Test Item'
+                ]
+            ]
+        ];
+        
+        $result = $service->createTransaction($testData);
+        
+        return response()->json([
+            'status' => $result['status'],
+            'message' => $result['status'] === 'success' ? 'Koneksi berhasil!' : 'Gagal',
+            'data' => $result,
+            'server_key' => substr(config('midtrans.server_key'), 0, 10) . '...',
+            'is_production' => config('midtrans.is_production'),
+            'base_url' => $service->isProduction() ? 'Production' : 'Sandbox'
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine(),
+            'trace' => $e->getTraceAsString()
+        ], 500);
+    }
+});
 require __DIR__ . '/auth.php';

@@ -8,7 +8,7 @@
 <div class="row g-3">
 
     {{-- BOOKING --}}
-    <div class="col-md-3">
+    <div class="col-md-4">
         <div class="card card-premium p-3">
             <small class="text-muted">Total Booking</small>
             <h4 class="fw-bold">{{ $totalBooking ?? 0 }}</h4>
@@ -16,7 +16,7 @@
     </div>
 
     {{-- TRIP --}}
-    <div class="col-md-3">
+    <div class="col-md-4">
         <div class="card card-premium p-3">
             <small class="text-muted">Total Trip</small>
             <h4 class="fw-bold">{{ $totalTrip ?? 0 }}</h4>
@@ -24,7 +24,7 @@
     </div>
 
     {{-- PEMASUKAN --}}
-    <div class="col-md-3">
+    <div class="col-md-4">
         <div class="card card-premium p-3">
             <small class="text-muted">Total Pemasukan</small>
             <h4 class="fw-bold text-success">
@@ -34,14 +34,14 @@
     </div>
 
     {{-- BELUM DISETOR --}}
-    <div class="col-md-3">
+    {{-- <div class="col-md-3">
         <div class="card card-premium p-3">
             <small class="text-muted">Belum Disetor</small>
             <h4 class="fw-bold text-danger">
                 Rp {{ number_format($pendingIncome ?? 0, 0, ',', '.') }}
             </h4>
         </div>
-    </div>
+    </div> --}}
 
 </div>
 
