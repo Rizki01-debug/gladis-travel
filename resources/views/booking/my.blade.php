@@ -76,7 +76,7 @@
 
                         <thead>
                             <tr class="text-center">
-                                <th>#</th>
+                                <th>No</th>
                                 <th class="text-start">Rute</th>
                                 <th>Kursi</th>
                                 <th>Pickup</th>
@@ -95,7 +95,7 @@
                                 <tr>
 
                                     <td class="text-center fw-semibold">
-                                        #{{ $booking->id }}
+                                        {{ $booking->id }}
                                     </td>
 
                                     <td>

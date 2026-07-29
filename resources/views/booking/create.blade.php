@@ -107,6 +107,15 @@
                     <b>Jarak:</b> <span id="distance_text">-</span> KM <br>
                     <b>Harga:</b> Rp <span id="price_text">-</span>
                 </div>
+                
+                {{-- 🔥 TAMBAHKAN INDIKATOR LOADING --}}
+                <div id="route_loading" class="text-muted mt-2" style="display: none;">
+                    <i class="fas fa-spinner fa-spin me-2"></i> Menghitung jarak...
+                </div>
+                <div id="route_error" class="text-danger mt-2" style="display: none;">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    <span id="route_error_message">Gagal menghitung jarak. Silakan coba lagi.</span>
+                </div>
             </div>
 
             {{-- ================= 🔥 METODE PEMBAYARAN ================= --}}
@@ -134,27 +143,6 @@
                             </div>
                         </div>
                     </div>
-
-                    {{-- Cash / Bayar di Tempat --}}
-                    {{-- <div class="col-md-6 mb-2">
-                        <div class="payment-method border rounded p-3 {{ old('payment_method') == 'cash' ? 'border-primary bg-light' : '' }}">
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="payment_method" 
-                                       value="cash" id="payment_cash">
-                                <label class="form-check-label w-100" for="payment_cash">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span>
-                                            <i class="fas fa-money-bill-wave text-success me-2"></i>
-                                            <strong>Bayar di Tempat</strong>
-                                            <br>
-                                            <small class="text-muted">Bayar langsung ke driver saat naik</small>
-                                        </span>
-                                        <span class="badge bg-success">Cash</span>
-                                    </div>
-                                </label>
-                            </div>
-                        </div>
-                    </div> --}}
                 </div>
 
                 {{-- Info tambahan --}}
@@ -162,13 +150,9 @@
                     <i class="fas fa-info-circle me-2"></i>
                     Anda akan diarahkan ke halaman pembayaran setelah booking berhasil.
                 </div>
-                {{-- <div class="alert alert-warning mt-2 d-none" id="payment_info_cash">
-                    <i class="fas fa-info-circle me-2"></i>
-                    Pembayaran dilakukan langsung kepada driver saat naik kendaraan.
-                </div> --}}
             </div>
 
-            <button class="btn btn-success w-100">
+            <button class="btn btn-success w-100" id="submit_btn">
                 🚀 Booking Sekarang
             </button>
 
@@ -267,6 +251,10 @@
             const priceInput = document.getElementById('price_total');
             const pickupMaps = document.getElementById('pickup_maps');
 
+            const routeLoading = document.getElementById('route_loading');
+            const routeError = document.getElementById('route_error');
+            const routeErrorMessage = document.getElementById('route_error_message');
+
             // 🔥 Payment method elements
             const paymentOnline = document.getElementById('payment_online');
             const paymentCash = document.getElementById('payment_cash');
@@ -281,20 +269,25 @@
 
             let routingControl = null;
             let markers = [];
+            let isRouteLoaded = false;
 
             // ================= PAYMENT METHOD TOGGLE =================
             function togglePaymentInfo() {
-                if (paymentOnline.checked) {
+                if (paymentOnline && paymentOnline.checked) {
                     infoOnline.classList.remove('d-none');
-                    infoCash.classList.add('d-none');
+                    if (infoCash) infoCash.classList.add('d-none');
                 } else {
                     infoOnline.classList.add('d-none');
-                    infoCash.classList.remove('d-none');
+                    if (infoCash) infoCash.classList.remove('d-none');
                 }
             }
 
-            paymentOnline.addEventListener('change', togglePaymentInfo);
-            paymentCash.addEventListener('change', togglePaymentInfo);
+            if (paymentOnline) {
+                paymentOnline.addEventListener('change', togglePaymentInfo);
+            }
+            if (paymentCash) {
+                paymentCash.addEventListener('change', togglePaymentInfo);
+            }
 
             // Click on payment method card
             document.querySelectorAll('.payment-method').forEach(function(card) {
@@ -340,23 +333,47 @@
                 return meetingPoints.find(p => p.id == meetingSelect.value);
             }
 
+            // ================= HITUNG JARAK MANUAL (FALLBACK) =================
+            function calculateDistance(lat1, lon1, lat2, lon2) {
+                const R = 6371; // Radius bumi dalam km
+                const dLat = (lat2 - lat1) * Math.PI / 180;
+                const dLon = (lon2 - lon1) * Math.PI / 180;
+                const a = 
+                    Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                return R * c;
+            }
+
             // ================= DRAW ROUTE =================
             function drawRoute(points, isPickup = false) {
 
-                if (!points || points.length < 2) return;
+                if (!points || points.length < 2) {
+                    showError('Titik rute tidak lengkap');
+                    return;
+                }
 
                 clearRoute();
+                showLoading();
 
+                // 🔥 GUNAKAN OSRM ROUTING
                 routingControl = L.Routing.control({
                     waypoints: points,
                     show: false,
                     addWaypoints: false,
                     routeWhileDragging: false,
                     draggableWaypoints: false,
-                    createMarker: () => null
+                    createMarker: () => null,
+                    router: L.Routing.osrmv1({
+                        serviceUrl: 'https://router.project-osrm.org/route/v1',
+                        profile: 'driving'
+                    })
                 }).addTo(map);
 
                 routingControl.on('routesfound', function(e) {
+                    hideLoading();
+                    isRouteLoaded = true;
 
                     let route = e.routes[0];
                     let distance = route.summary.totalDistance / 1000;
@@ -387,6 +404,57 @@
                         padding: [40, 40]
                     });
                 });
+
+                routingControl.on('routingerror', function(e) {
+                    hideLoading();
+                    isRouteLoaded = false;
+                    
+                    // 🔥 FALLBACK: Hitung jarak manual (garis lurus)
+                    const start = points[0];
+                    const end = points[points.length - 1];
+                    const distance = calculateDistance(start.lat, start.lng, end.lat, end.lng);
+                    
+                    let price = basePrice + (distance * tarif);
+                    if (isPickup) price += pickupFee;
+                    let finalPrice = round(price);
+
+                    distanceText.innerText = distance.toFixed(2) + ' (perkiraan)';
+                    priceText.innerText = formatRupiah(finalPrice);
+
+                    if (distanceInput) distanceInput.value = distance.toFixed(2);
+                    if (priceInput) priceInput.value = finalPrice;
+
+                    // Gambar garis lurus
+                    L.polyline(points, { color: 'red', dashArray: '5, 5' }).addTo(map);
+                    
+                    addMarker(points[0], "📍 Start");
+                    addMarker(points[points.length - 1], "🏁 Tujuan");
+                    
+                    map.fitBounds(L.latLngBounds(points), { padding: [40, 40] });
+
+                    showError('Menggunakan perkiraan jarak (garis lurus). ' + e.error?.message || '');
+                });
+            }
+
+            // ================= LOADING & ERROR =================
+            function showLoading() {
+                if (routeLoading) routeLoading.style.display = 'block';
+                if (routeError) routeError.style.display = 'none';
+            }
+
+            function hideLoading() {
+                if (routeLoading) routeLoading.style.display = 'none';
+            }
+
+            function showError(message) {
+                if (routeError) {
+                    routeError.style.display = 'block';
+                    if (routeErrorMessage) routeErrorMessage.textContent = message || 'Gagal menghitung jarak. Silakan coba lagi.';
+                }
+            }
+
+            function hideError() {
+                if (routeError) routeError.style.display = 'none';
             }
 
             // ================= INIT =================
@@ -396,12 +464,13 @@
                     drawRoute([L.latLng(p.latitude, p.longitude), destination]);
                 }
                 map.invalidateSize();
-            }, 300);
+            }, 500);
 
             // ================= CHANGE MEETING =================
             meetingSelect.addEventListener('change', () => {
                 let p = getPoint();
                 if (p) {
+                    hideError();
                     drawRoute([L.latLng(p.latitude, p.longitude), destination]);
                 }
             });
@@ -411,6 +480,7 @@
 
                 clearRoute();
                 pickupMaps.value = '';
+                hideError();
 
                 let p = getPoint();
                 if (!p) return;
@@ -431,6 +501,7 @@
                 let start = L.latLng(p.latitude, p.longitude);
                 let user = L.latLng(e.latlng.lat, e.latlng.lng);
 
+                hideError();
                 drawRoute([start, user, destination], true);
 
                 pickupMaps.value = e.latlng.lat + ',' + e.latlng.lng;
@@ -454,9 +525,14 @@
 
             const distance = document.getElementById('distance_km').value;
             if (!distance || distance <= 0) {
-                alert('Jarak tidak valid!');
+                alert('Jarak tidak valid! Silakan tunggu hingga perhitungan jarak selesai.');
                 return false;
             }
+
+            // Disable submit button untuk mencegah double submit
+            const submitBtn = document.getElementById('submit_btn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Memproses...';
 
             return true;
         }
